@@ -59,16 +59,20 @@ def t_Integer(t):
 
 def t_Identifier(t):
     r"[a-zA-Z_][0-9a-zA-Z_]*"
+    # 以字符开头的标识符
     t.type = reserved.get(t.value, "Identifier")
     return t
 
 
 # String patterns that should be ignored by the lexer.
 t_ignore_Newline = r"(?:\r\n?|\n)"
+# 忽略换行
 
 t_ignore_Whitespace = r"[ \t]+"
-t_ignore_LineComment = rf"//.*?(?={ t_ignore_Newline })"
+# 忽略空格
 
+t_ignore_LineComment = rf"//.*?(?={ t_ignore_Newline })"
+# 忽略注释
 
 # Collection of all tokens.
 tokens = tuple(

@@ -21,6 +21,13 @@ def accept(visitor: Visitor[T, U], ctx: T) -> Callable[[Node], Optional[U]]:
 class Visitor(Protocol[T, U]):  # type: ignore
     def visitOther(self, node: Node, ctx: T) -> None:
         return None
+    # python类函数都要带self参数，但是在静态方法中，带ctx参数而不是self
+
+    # self指的是实例对象; 而ctx用在静态方法中, 调用的时候不需要实例化对象, 直接通过类名就可以调用, 所以self在静态方法中没有意义
+
+    # 自定义的forward()方法和backward()方法的第一个参数必须是ctx; ctx可以保存forward()中的变量,以便在backward()中继续使用
+
+    # visit模式：每一个被检查的点调用相应的visit函数，传入参数一般为自身类型的实例
 
     def visitNULL(self, that: NullType, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)

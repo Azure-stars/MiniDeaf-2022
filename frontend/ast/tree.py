@@ -48,18 +48,28 @@ class ListNode(Node, Generic[_T]):
 class Program(ListNode["Function"]):
     """
     AST root. It should have only one children before step9.
+    因为没有函数，只有一个主函数入口
     """
 
     def __init__(self, *children: Function) -> None:
         super().__init__("program", list(children))
 
     def functions(self) -> dict[str, Function]:
+        """
+        得到所有函数名称
+        """
         return {func.ident.value: func for func in self if isinstance(func, Function)}
 
     def hasMainFunc(self) -> bool:
+        """
+        是否有主函数
+        """
         return "main" in self.functions()
 
     def mainFunc(self) -> Function:
+        """
+        得到主函数
+        """
         return self.functions()["main"]
 
     def accept(self, v: Visitor[T, U], ctx: T):
@@ -81,6 +91,8 @@ class Function(Node):
         self.ret_t = ret_t
         self.ident = ident
         self.body = body
+        # 函数体由   返回值类型 + 函数名称 + 函数体组成
+        # 这里似乎没有参数
 
     def __getitem__(self, key: int) -> Node:
         return (
@@ -99,6 +111,7 @@ class Function(Node):
 class Statement(Node):
     """
     Abstract type that represents a statement.
+    Statement：特定语句或者语句块，如block或者返回语句
     """
 
     def is_block(self) -> bool:
@@ -120,6 +133,7 @@ class Return(Statement):
     def __getitem__(self, key: Union[int, str]) -> Node:
         if isinstance(key, int):
             return (self.expr,)[key]
+            # 返回值为常数
         return self.__dict__[key]
 
     def __len__(self) -> int:
@@ -139,7 +153,9 @@ class If(Statement):
     ) -> None:
         super().__init__("if")
         self.cond = cond
+        # 判断条件
         self.then = then
+        # if语句块的内容
         self.otherwise = otherwise or NULL
 
     def __getitem__(self, key: int) -> Node:
@@ -211,6 +227,7 @@ class Block(Statement, ListNode[Union["Statement", "Declaration"]]):
 class Declaration(Node):
     """
     AST node of declaration.
+    声明一个变量
     """
 
     def __init__(
@@ -223,6 +240,7 @@ class Declaration(Node):
         self.var_t = var_t
         self.ident = ident
         self.init_expr = init_expr or NULL
+        
 
     def __getitem__(self, key: int) -> Node:
         return (self.var_t, self.ident, self.init_expr)[key]
@@ -237,6 +255,7 @@ class Declaration(Node):
 class Expression(Node):
     """
     Abstract type that represents an evaluable expression.
+    可计算的表达式
     """
 
     def __init__(self, name: str) -> None:
@@ -248,6 +267,8 @@ class Unary(Expression):
     """
     AST node of unary expression.
     Note that the operation type (like negative) is not among its children.
+    一元表达式
+    不包含负数
     """
 
     def __init__(self, op: UnaryOp, operand: Expression) -> None:
@@ -274,7 +295,8 @@ class Unary(Expression):
 class Binary(Expression):
     """
     AST node of binary expression.
-    Note that the operation type (like plus or subtract) is not among its children.
+    Note that the operation type (like plus or subtract) is not among its children. 
+    二元表达式
     """
 
     def __init__(self, op: BinaryOp, lhs: Expression, rhs: Expression) -> None:
@@ -348,6 +370,7 @@ class ConditionExpression(Expression):
 class Identifier(Expression):
     """
     AST node of identifier "expression".
+    变量
     """
 
     def __init__(self, value: str) -> None:
@@ -373,6 +396,7 @@ class Identifier(Expression):
 class IntLiteral(Expression):
     """
     AST node of int literal like `0`.
+    字面值，即常量
     """
 
     def __init__(self, value: Union[int, str]) -> None:
@@ -398,6 +422,7 @@ class IntLiteral(Expression):
 class TypeLiteral(Node):
     """
     Abstract node type that represents a type literal like `int`.
+    代表一个类型符，当前仅会有int
     """
 
     def __init__(self, name: str, _type: DecafType) -> None:

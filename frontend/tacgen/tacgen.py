@@ -1,3 +1,4 @@
+from tkinter import NE
 import utils.riscv as riscv
 from frontend.ast import node
 from frontend.ast.tree import *
@@ -106,24 +107,54 @@ class TACGen(Visitor[FuncVisitor, None]):
 
     def visitUnary(self, expr: Unary, mv: FuncVisitor) -> None:
         expr.operand.accept(self, mv)
-
+        # 先解析表达式，再解析符号
         op = {
             node.UnaryOp.Neg: tacop.UnaryOp.NEG,
-            # You can add unary operations here.
+            node.UnaryOp.BitNot: tacop.UnaryOp.NOT,
+            node.UnaryOp.LogicNot: tacop.UnaryOp.SEQZ
         }[expr.op]
         expr.setattr("val", mv.visitUnary(op, expr.operand.getattr("val")))
-
+        # 在父结点，我们根据子结点的临时变量与操作符号，生成一条指令，将这条指令得到的目标临时变量设置为父结点的临时变量
     def visitBinary(self, expr: Binary, mv: FuncVisitor) -> None:
         expr.lhs.accept(self, mv)
         expr.rhs.accept(self, mv)
-
-        op = {
-            node.BinaryOp.Add: tacop.BinaryOp.ADD,
-            # You can add binary operations here.
-        }[expr.op]
-        expr.setattr(
-            "val", mv.visitBinary(op, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
-        )
+        if expr.op == node.BinaryOp.EQ:
+            new_temp =  mv.visitBinary(tacop.BinaryOp.SUB, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
+            expr.setattr("val", new_temp)
+            expr.setattr("val", mv.visitUnary(tacop.UnaryOp.SEQZ, new_temp))
+        elif expr.op == node.BinaryOp.NE:
+            new_temp =  mv.visitBinary(tacop.BinaryOp.SUB, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
+            expr.setattr("val", new_temp)
+            expr.setattr("val", mv.visitUnary(tacop.UnaryOp.SNEZ, new_temp))
+        elif expr.op == node.BinaryOp.LE:
+            new_temp =  mv.visitBinary(tacop.BinaryOp.SUB, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
+            expr.setattr("val", new_temp)
+            new_temp = mv.visitUnary(tacop.UnaryOp.SGTZ, new_temp)
+            expr.setattr("val", new_temp)
+            expr.setattr("val", mv.visitUnary(tacop.UnaryOp.SEQZ, new_temp))
+        elif expr.op == node.BinaryOp.GE:
+            new_temp =  mv.visitBinary(tacop.BinaryOp.SUB, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
+            expr.setattr("val", new_temp)
+            new_temp = mv.visitUnary(tacop.UnaryOp.SLTZ, new_temp)
+            expr.setattr("val", new_temp)
+            expr.setattr("val", mv.visitUnary(tacop.UnaryOp.SEQZ, new_temp))
+        
+        else:
+            op = {
+                node.BinaryOp.Add: tacop.BinaryOp.ADD,
+                node.BinaryOp.Sub: tacop.BinaryOp.SUB,
+                node.BinaryOp.Mul: tacop.BinaryOp.MUL,
+                node.BinaryOp.Div: tacop.BinaryOp.DIV,
+                node.BinaryOp.Mod: tacop.BinaryOp.REM,
+                node.BinaryOp.LT: tacop.BinaryOp.SLT,
+                node.BinaryOp.GT: tacop.BinaryOp.SGT,
+                node.BinaryOp.LogicAnd: tacop.BinaryOp.AND,
+                node.BinaryOp.LogicOr: tacop.BinaryOp.OR,
+                # You can add binary operations here.
+            }[expr.op]
+            expr.setattr(
+                "val", mv.visitBinary(op, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
+            )
 
     def visitCondExpr(self, expr: ConditionExpression, mv: FuncVisitor) -> None:
         """

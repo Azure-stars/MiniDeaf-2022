@@ -62,7 +62,7 @@ class Namer(Visitor[ScopeStack, None]):
     def visitIf(self, stmt: If, ctx: ScopeStack) -> None:
         stmt.cond.accept(self, ctx)
         stmt.then.accept(self, ctx)
-
+        # 对于不同的类型，有可能visit的变量数目不定
         # check if the else branch exists
         if not stmt.otherwise is NULL:
             stmt.otherwise.accept(self, ctx)

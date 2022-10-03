@@ -143,7 +143,7 @@ class RiscvSubroutineEmitter(SubroutineEmitter):
     def emitLabel(self, label: Label):
         self.buf.append(Riscv.RiscvLabel(label).toNative([], []))
 
-    
+
     def emitEnd(self):
         self.printer.printComment("start of prologue")
         self.printer.printInstr(Riscv.SPAdd(-self.nextLocalOffset))

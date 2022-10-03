@@ -13,6 +13,7 @@ from .temp import Temp
 
 
 class FuncVisitor:
+    # 以函数为单位去生成
     def __init__(self, entry: FuncLabel, numArgs: int, ctx: Context) -> None:
         self.ctx = ctx
         self.func = TACFunc(entry, numArgs)
@@ -106,3 +107,4 @@ class FuncVisitor:
     # To get the label for 'continue' in the current loop.
     def getContinueLabel(self) -> Label:
         return self.continueLabelStack[-1]
+        # 取最新的continue或者break 

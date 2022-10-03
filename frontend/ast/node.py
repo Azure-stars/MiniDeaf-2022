@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum, auto, unique
+from lib2to3.pgen2.token import MINUS
 from typing import Any, Optional, TypeVar, Union
 
 from .visitor import Visitor
@@ -16,7 +17,7 @@ _T = TypeVar("_T", bound=Enum)
 
 T = TypeVar("T")
 U = TypeVar("U", covariant=True)
-
+# 协变(coavariant)，可以理解为： 将一个对象转换成它的子类对象。
 
 class Operator(Enum):
     """
@@ -34,6 +35,9 @@ class Operator(Enum):
             cls._backward = {item.value: item for item in cls}  # type: ignore
             d = cls._backward  # type: ignore
         return d[s]  # type: ignore
+    # cls代表着类本身
+    # 类型变量通过使用前向引用绑定到类。使用此类型变量对类方法进行注释，而不是将返回类型硬编码
+    # 这意味着类型检查器可以正确推断返回类型，即使该方法在子类上调用：
 
 
 @unique
@@ -124,6 +128,7 @@ class Node(ABC):
     def setattr(self, name: str, value: Any):
         """Set additional information on AST node."""
         self._attrs[name] = value
+        # 为节点设置临时变量
 
     def getattr(self, name: str) -> Any:
         """

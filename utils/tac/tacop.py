@@ -23,6 +23,8 @@ class UnaryOp(Enum):
     NOT = auto()
     SEQZ = auto()
     SNEZ = auto()
+    SLTZ = auto()
+    SGTZ = auto()
 
 
 # Kinds of binary operations.
@@ -33,9 +35,13 @@ class BinaryOp(Enum):
     MUL = auto()
     DIV = auto()
     REM = auto()
+    # 取模
+    NEGW = auto()
     EQU = auto()
     NEQ = auto()
+
     SLT = auto()
+    # 小于
     LEQ = auto()
     SGT = auto()
     GEQ = auto()

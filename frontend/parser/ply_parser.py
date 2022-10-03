@@ -18,6 +18,7 @@ from frontend.lexer import lex
 from utils.error import DecafSyntaxError
 
 tokens = lex.tokens
+
 error_stack = list[DecafSyntaxError]()
 
 
@@ -28,8 +29,10 @@ def unary(p):
 def binary(p):
     if p[2] == BinaryOp.Assign.value:
         p[0] = Assignment(p[1], p[3])
+        # 赋值语句
     else:
         p[0] = Binary(BinaryOp.backward_search(p[2]), p[1], p[3])
+        # 正常的二元语句
 
 
 def p_empty(p: yacc.YaccProduction):
@@ -58,6 +61,8 @@ def p_function_def(p):
     function : type Identifier LParen RParen LBrace block RBrace
     """
     p[0] = Function(p[1], p[2], p[6])
+    # 这里都是按照范式来规定的下标
+    # function: 传入参数为类型名，函数名，函数体
 
 
 def p_block(p):
@@ -120,6 +125,7 @@ def p_return(p):
     statement_matched : Return expression Semi
     """
     p[0] = Return(p[2])
+    # return 是 保留语句
 
 
 def p_expression_statement(p):
@@ -148,6 +154,7 @@ def p_opt_expression(p):
     opt_expression : expression
     """
     p[0] = p[1]
+    # 这里
 
 
 def p_opt_expression_empty(p):
@@ -162,13 +169,14 @@ def p_declaration(p):
     declaration : type Identifier
     """
     p[0] = Declaration(p[1], p[2])
-
+    # 声明语句
 
 def p_declaration_init(p):
     """
     declaration : type Identifier Assign expression
     """
     p[0] = Declaration(p[1], p[2], p[4])
+    # 定义语句
 
 
 def p_expression_precedence(p):
@@ -189,7 +197,8 @@ def p_expression_precedence(p):
     postfix : primary
     """
     p[0] = p[1]
-
+    # 优先级判断
+    # 可以看出这是连续的产生式
 
 def p_unary_expression(p):
     """
@@ -198,7 +207,8 @@ def p_unary_expression(p):
         | Not unary
     """
     unary(p)
-
+    # 现在支持的一元操作为
+    # 取负、二级制取反、布尔值取反
 
 def p_binary_expression(p):
     """
@@ -221,14 +231,15 @@ def p_binary_expression(p):
         | multiplicative Mod unary
     """
     binary(p)
-
+    # 二元表达式：定义为  一个左值变量 一个赋值  一个右边的表达式
+    # 表达式中定义了   按位与、按位或、异或、取等、加减乘除运算（默认乘除优先级更高）、不等式
 
 def p_conditional_expression(p):
     """
     conditional : logical_or Question expression Colon conditional
     """
     p[0] = ConditionExpression(p[1], p[3], p[5])
-
+    # 三目运算符
 
 def p_int_literal_expression(p):
     """
@@ -249,7 +260,7 @@ def p_brace_expression(p):
     primary : LParen expression RParen
     """
     p[0] = p[2]
-
+    # 括号表达式
 
 def p_error(t):
     """
