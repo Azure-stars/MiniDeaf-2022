@@ -36,7 +36,6 @@ class BinaryOp(Enum):
     DIV = auto()
     REM = auto()
     # 取模
-    NEGW = auto()
     EQU = auto()
     NEQ = auto()
 

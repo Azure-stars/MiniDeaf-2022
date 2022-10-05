@@ -77,7 +77,31 @@ class RiscvAsmEmitter(AsmEmitter):
             self.seq.append(Riscv.Unary(instr.op, instr.dst, instr.operand))
  
         def visitBinary(self, instr: Binary) -> None:
-            self.seq.append(Riscv.Binary(instr.op, instr.dst, instr.lhs, instr.rhs))
+
+            if instr.op == BinaryOp.EQU:
+                self.seq.append(Riscv.Binary(BinaryOp.SUB, instr.dst, instr.lhs, instr.rhs))
+                self.seq.append(Riscv.Unary(UnaryOp.SEQZ, instr.dst, instr.dst))
+            elif instr.op == BinaryOp.NEQ:
+                self.seq.append(Riscv.Binary(BinaryOp.SUB, instr.dst, instr.lhs, instr.rhs))
+                self.seq.append(Riscv.Unary(UnaryOp.SNEZ, instr.dst, instr.dst))
+            elif instr.op == BinaryOp.LEQ:
+                self.seq.append(Riscv.Binary(BinaryOp.SUB, instr.dst, instr.lhs, instr.rhs))
+                self.seq.append(Riscv.Unary(UnaryOp.SGTZ, instr.dst, instr.dst))
+                self.seq.append(Riscv.Unary(UnaryOp.SEQZ, instr.dst, instr.dst))
+            elif instr.op == BinaryOp.GEQ:
+                self.seq.append(Riscv.Binary(BinaryOp.SUB, instr.dst, instr.lhs, instr.rhs))
+                self.seq.append(Riscv.Unary(UnaryOp.SLTZ, instr.dst, instr.dst))
+                self.seq.append(Riscv.Unary(UnaryOp.SEQZ, instr.dst, instr.dst))
+            elif instr.op == BinaryOp.OR:
+                self.seq.append(Riscv.Binary(BinaryOp.OR, instr.dst, instr.lhs, instr.rhs))
+                self.seq.append(Riscv.Unary(UnaryOp.SNEZ, instr.dst, instr.dst))
+            elif instr.op == BinaryOp.AND:
+                self.seq.append(Riscv.Unary(UnaryOp.SNEZ, instr.dst, instr.lhs))
+                self.seq.append(Riscv.Binary(BinaryOp.SUB, instr.dst, Riscv.ZERO, instr.dst))
+                self.seq.append(Riscv.Binary(BinaryOp.AND, instr.dst, instr.dst, instr.rhs))
+                self.seq.append(Riscv.Unary(UnaryOp.SNEZ, instr.dst, instr.dst))
+            else:
+                self.seq.append(Riscv.Binary(instr.op, instr.dst, instr.lhs, instr.rhs))
 
         def visitCondBranch(self, instr: CondBranch) -> None:
             self.seq.append(Riscv.Branch(instr.cond, instr.label))

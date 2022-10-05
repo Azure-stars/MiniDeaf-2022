@@ -117,43 +117,25 @@ class TACGen(Visitor[FuncVisitor, None]):
     def visitBinary(self, expr: Binary, mv: FuncVisitor) -> None:
         expr.lhs.accept(self, mv)
         expr.rhs.accept(self, mv)
-        if expr.op == node.BinaryOp.EQ:
-            new_temp =  mv.visitBinary(tacop.BinaryOp.SUB, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
-            expr.setattr("val", new_temp)
-            expr.setattr("val", mv.visitUnary(tacop.UnaryOp.SEQZ, new_temp))
-        elif expr.op == node.BinaryOp.NE:
-            new_temp =  mv.visitBinary(tacop.BinaryOp.SUB, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
-            expr.setattr("val", new_temp)
-            expr.setattr("val", mv.visitUnary(tacop.UnaryOp.SNEZ, new_temp))
-        elif expr.op == node.BinaryOp.LE:
-            new_temp =  mv.visitBinary(tacop.BinaryOp.SUB, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
-            expr.setattr("val", new_temp)
-            new_temp = mv.visitUnary(tacop.UnaryOp.SGTZ, new_temp)
-            expr.setattr("val", new_temp)
-            expr.setattr("val", mv.visitUnary(tacop.UnaryOp.SEQZ, new_temp))
-        elif expr.op == node.BinaryOp.GE:
-            new_temp =  mv.visitBinary(tacop.BinaryOp.SUB, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
-            expr.setattr("val", new_temp)
-            new_temp = mv.visitUnary(tacop.UnaryOp.SLTZ, new_temp)
-            expr.setattr("val", new_temp)
-            expr.setattr("val", mv.visitUnary(tacop.UnaryOp.SEQZ, new_temp))
-        
-        else:
-            op = {
-                node.BinaryOp.Add: tacop.BinaryOp.ADD,
-                node.BinaryOp.Sub: tacop.BinaryOp.SUB,
-                node.BinaryOp.Mul: tacop.BinaryOp.MUL,
-                node.BinaryOp.Div: tacop.BinaryOp.DIV,
-                node.BinaryOp.Mod: tacop.BinaryOp.REM,
-                node.BinaryOp.LT: tacop.BinaryOp.SLT,
-                node.BinaryOp.GT: tacop.BinaryOp.SGT,
-                node.BinaryOp.LogicAnd: tacop.BinaryOp.AND,
-                node.BinaryOp.LogicOr: tacop.BinaryOp.OR,
-                # You can add binary operations here.
-            }[expr.op]
-            expr.setattr(
-                "val", mv.visitBinary(op, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
-            )
+        op = {
+            node.BinaryOp.Add: tacop.BinaryOp.ADD,
+            node.BinaryOp.Sub: tacop.BinaryOp.SUB,
+            node.BinaryOp.Mul: tacop.BinaryOp.MUL,
+            node.BinaryOp.Div: tacop.BinaryOp.DIV,
+            node.BinaryOp.Mod: tacop.BinaryOp.REM,
+            node.BinaryOp.LT: tacop.BinaryOp.SLT,
+            node.BinaryOp.GT: tacop.BinaryOp.SGT,
+            node.BinaryOp.LogicAnd: tacop.BinaryOp.AND,
+            node.BinaryOp.LogicOr: tacop.BinaryOp.OR,
+            node.BinaryOp.EQ: tacop.BinaryOp.EQU,
+            node.BinaryOp.NE: tacop.BinaryOp.NEQ,
+            node.BinaryOp.LE: tacop.BinaryOp.LEQ,
+            node.BinaryOp.GE: tacop.BinaryOp.GEQ,
+            # You can add binary operations here.
+        }[expr.op]
+        expr.setattr(
+            "val", mv.visitBinary(op, expr.lhs.getattr("val"), expr.rhs.getattr("val"))
+        )
 
     def visitCondExpr(self, expr: ConditionExpression, mv: FuncVisitor) -> None:
         """
