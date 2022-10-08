@@ -1,3 +1,6 @@
+from hashlib import new
+from os import EX_OSERR
+from tkinter.messagebox import NO
 from typing import Protocol, TypeVar, cast
 
 from frontend.ast.node import Node, NullType
@@ -98,12 +101,22 @@ class Namer(Visitor[ScopeStack, None]):
         3. Set the 'symbol' attribute of decl.
         4. If there is an initial value, visit it.
         """
-        pass
+        temp = ctx.findConflict(decl.ident.value)
+        # 判断是否重名
+        if temp != None:
+            raise DecafGlobalVarDefinedTwiceError(decl.ident.value)
+        new_symbol = VarSymbol(decl.ident.value, decl.var_t.type)
+        ctx.declare(new_symbol)
+        decl.setattr("symbol", new_symbol)
+        if decl.init_expr != NULL:
+            decl.init_expr.accept(self, ctx)
 
     def visitAssignment(self, expr: Assignment, ctx: ScopeStack) -> None:
         """
         1. Refer to the implementation of visitBinary.
         """
+        expr.lhs.accept(self, ctx)
+        expr.rhs.accept(self, ctx)
         pass
 
     def visitUnary(self, expr: Unary, ctx: ScopeStack) -> None:
@@ -117,7 +130,9 @@ class Namer(Visitor[ScopeStack, None]):
         """
         1. Refer to the implementation of visitBinary.
         """
-        pass
+        expr.cond.accept(self, ctx)
+        expr.then.accept(self, ctx)
+        expr.otherwise.accept(self, ctx)
 
     def visitIdentifier(self, ident: Identifier, ctx: ScopeStack) -> None:
         """
@@ -125,7 +140,11 @@ class Namer(Visitor[ScopeStack, None]):
         2. If it has not been declared, raise a DecafUndefinedVarError.
         3. Set the 'symbol' attribute of ident.
         """
-        pass
+        temp = ctx.lookup(ident.value)
+        if temp == NULL:
+            raise DecafUndefinedVarError(ident.value)
+        ident.setattr("symbol",temp)
+        # pass
 
     def visitIntLiteral(self, expr: IntLiteral, ctx: ScopeStack) -> None:
         value = expr.value

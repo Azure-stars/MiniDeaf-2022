@@ -43,7 +43,6 @@ class RiscvAsmEmitter(AsmEmitter):
             instr.accept(selector)
 
         info = SubroutineInfo(func.entry)
-
         return (selector.seq, info)
 
     # use info to construct a RiscvSubroutineEmitter
@@ -66,6 +65,8 @@ class RiscvAsmEmitter(AsmEmitter):
             else:
                 self.seq.append(Riscv.LoadImm(Riscv.A0, 0))
             self.seq.append(Riscv.JumpToEpilogue(self.entry))
+        def visitAssign(self, instr: Assign) -> None:
+            self.seq.append(Riscv.Move(instr.dst, instr.src))
 
         def visitMark(self, instr: Mark) -> None:
             self.seq.append(Riscv.RiscvLabel(instr.label))

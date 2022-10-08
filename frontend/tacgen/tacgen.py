@@ -1,3 +1,5 @@
+from cmath import exp
+from textwrap import indent
 import utils.riscv as riscv
 from frontend.ast import node
 from frontend.ast.tree import *
@@ -48,7 +50,8 @@ class TACGen(Visitor[FuncVisitor, None]):
         """
         1. Set the 'val' attribute of ident as the temp variable of the 'symbol' attribute of ident.
         """
-        pass
+        symbol = ident.getattr("symbol")
+        ident.setattr("val", symbol.temp)
 
     def visitDeclaration(self, decl: Declaration, mv: FuncVisitor) -> None:
         """
@@ -56,7 +59,12 @@ class TACGen(Visitor[FuncVisitor, None]):
         2. Use mv.freshTemp to get a new temp variable for this symbol.
         3. If the declaration has an initial value, use mv.visitAssignment to set it.
         """
-        pass
+        now_symbol = decl.getattr("symbol")
+        now_symbol.temp = mv.freshTemp()
+        if decl.init_expr != NULL:
+            decl.init_expr.accept(self, mv)
+            src = decl.init_expr.getattr("val")
+            decl.setattr("val", mv.visitAssignment(now_symbol.temp, src))
 
     def visitAssignment(self, expr: Assignment, mv: FuncVisitor) -> None:
         """
@@ -64,7 +72,11 @@ class TACGen(Visitor[FuncVisitor, None]):
         2. Use mv.visitAssignment to emit an assignment instruction.
         3. Set the 'val' attribute of expr as the value of assignment instruction.
         """
-        pass
+        expr.lhs.accept(self, mv)
+        expr.rhs.accept(self, mv)
+        dst = expr.lhs.getattr("val")
+        src = expr.rhs.getattr("val")
+        expr.setattr("val", mv.visitAssignment(dst, src))
 
     def visitIf(self, stmt: If, mv: FuncVisitor) -> None:
         stmt.cond.accept(self, mv)
@@ -84,6 +96,7 @@ class TACGen(Visitor[FuncVisitor, None]):
             )
             stmt.then.accept(self, mv)
             mv.visitBranch(exitLabel)
+            # 挂上jump exitlabel
             mv.visitLabel(skipLabel)
             stmt.otherwise.accept(self, mv)
             mv.visitLabel(exitLabel)
@@ -141,7 +154,26 @@ class TACGen(Visitor[FuncVisitor, None]):
         """
         1. Refer to the implementation of visitIf and visitBinary.
         """
-        pass
+        expr.cond.accept(self, mv)
+
+        skipLabel = mv.freshLabel()
+        exitLabel = mv.freshLabel()
+        mv.visitCondBranch(
+            tacop.CondBranchOp.BEQ, expr.cond.getattr("val"), skipLabel
+        )
+        expr.then.accept(self, mv)
+        dst = expr.cond.getattr("val")
+        src = expr.then.getattr("val")
+        mv.visitAssignment(dst, src)
+        expr.setattr("val", dst)
+        mv.visitBranch(exitLabel)
+        # 挂上jump exitlabel
+        mv.visitLabel(skipLabel)
+        expr.otherwise.accept(self, mv)
+        src = expr.otherwise.getattr("val")
+        mv.visitAssignment(dst, src)
+        expr.setattr("val", dst)
+        mv.visitLabel(exitLabel)
 
     def visitIntLiteral(self, expr: IntLiteral, mv: FuncVisitor) -> None:
         expr.setattr("val", mv.visitLoad(expr.value))

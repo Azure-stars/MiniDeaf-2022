@@ -55,12 +55,13 @@ def t_Integer(t):
     r"[0-9]+"  # can be accessed from `t_Interger.__doc__`
     t.value = int(t.value)
     return t
-
+    # 提取常量值
 
 def t_Identifier(t):
     r"[a-zA-Z_][0-9a-zA-Z_]*"
     # 以字符开头的标识符
     t.type = reserved.get(t.value, "Identifier")
+    # 如果不是固有类型，就定义为identifier
     return t
 
 

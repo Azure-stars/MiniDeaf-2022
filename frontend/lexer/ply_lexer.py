@@ -60,6 +60,7 @@ def _intlit_into_node(f):
     def wrapped(t):
         t = f(t)
         t.value = tree.IntLiteral(t.value)
+        # 把常量值转化为一个ast上的节点
         return t
 
     return wrapped
