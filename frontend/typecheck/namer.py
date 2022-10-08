@@ -1,8 +1,6 @@
 from hashlib import new
 from os import EX_OSERR
-from tkinter.messagebox import NO
 from typing import Protocol, TypeVar, cast
-
 from frontend.ast.node import Node, NullType
 from frontend.ast.tree import *
 from frontend.ast.visitor import RecursiveVisitor, Visitor
