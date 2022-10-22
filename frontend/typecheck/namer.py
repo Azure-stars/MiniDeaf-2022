@@ -102,7 +102,7 @@ class Namer(Visitor[ScopeStack, None]):
         temp = ctx.findConflict(decl.ident.value)
         # 判断是否重名
         if temp != None:
-            raise DecafGlobalVarDefinedTwiceError(decl.ident.value)
+            raise DecafDeclConflictError(decl.ident.value)
         new_symbol = VarSymbol(decl.ident.value, decl.var_t.type)
         ctx.declare(new_symbol)
         decl.setattr("symbol", new_symbol)
