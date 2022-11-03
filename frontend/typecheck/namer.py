@@ -1,4 +1,3 @@
-from hashlib import new
 from os import EX_OSERR
 from typing import Protocol, TypeVar, cast
 from frontend.ast.node import Node, NullType
@@ -44,21 +43,28 @@ class Namer(Visitor[ScopeStack, None]):
         func.body.accept(self, ctx)
 
     def visitBlock(self, block: Block, ctx: ScopeStack) -> None:
+        new_score = Scope(ScopeKind.LOCAL)
+        ctx.open(new_score)
         for child in block:
             child.accept(self, ctx)
-
+        ctx.close()
     def visitReturn(self, stmt: Return, ctx: ScopeStack) -> None:
         stmt.expr.accept(self, ctx)
 
-        """
-        def visitFor(self, stmt: For, ctx: ScopeStack) -> None:
-
-        1. Open a local scope for stmt.init.
-        2. Visit stmt.init, stmt.cond, stmt.update.
-        3. Open a loop in ctx (for validity checking of break/continue)
-        4. Visit body of the loop.
-        5. Close the loop and the local scope.
-        """
+    def visitFor(self, stmt: For, ctx: ScopeStack) -> None:
+        ctx.open(Scope(ScopeKind.LOCAL))
+        ctx.openLoop()
+        stmt.init.accept(self,ctx)
+        stmt.cond.accept(self,ctx)
+        stmt.update.accept(self,ctx)
+        stmt.body.accept(self, ctx)
+        ctx.closeLoop()
+        ctx.close()
+    # 1. Open a local scope for stmt.init.
+    # 2. Visit stmt.init, stmt.cond, stmt.update.
+    # 3. Open a loop in ctx (for validity checking of break/continue)
+    # 4. Visit body of the loop.
+    # 5. Close the loop and the local scope.
 
     def visitIf(self, stmt: If, ctx: ScopeStack) -> None:
         stmt.cond.accept(self, ctx)
@@ -69,25 +75,28 @@ class Namer(Visitor[ScopeStack, None]):
             stmt.otherwise.accept(self, ctx)
 
     def visitWhile(self, stmt: While, ctx: ScopeStack) -> None:
+        ctx.open(Scope(ScopeKind.LOCAL))
         stmt.cond.accept(self, ctx)
         ctx.openLoop()
         stmt.body.accept(self, ctx)
         ctx.closeLoop()
+        ctx.close()
 
-        """
-        def visitDoWhile(self, stmt: DoWhile, ctx: ScopeStack) -> None:
-
-        1. Open a loop in ctx (for validity checking of break/continue)
-        2. Visit body of the loop.
-        3. Close the loop.
-        4. Visit the condition of the loop.
-        """
+    def visitDoWhile(self, stmt: DoWhile, ctx: ScopeStack) -> None:
+        ctx.open(Scope(ScopeKind.LOCAL))
+        ctx.openLoop()
+        stmt.body.accept(self,ctx)
+        ctx.closeLoop()
+        stmt.cond.accept(self,ctx)
+        ctx.close()
 
     def visitBreak(self, stmt: Break, ctx: ScopeStack) -> None:
         if not ctx.inLoop():
             raise DecafBreakOutsideLoopError()
-
-        # def visitContinue(self, stmt: Continue, ctx: ScopeStack) -> None:
+        ctx.closeLoop()
+    def visitContinue(self, stmt: Continue, ctx: ScopeStack) -> None:
+        if not ctx.inLoop():
+            raise DecafContinueOutsideLoopError()
         """
         1. Refer to the implementation of visitBreak.
         """

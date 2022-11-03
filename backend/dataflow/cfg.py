@@ -1,3 +1,4 @@
+from platform import node
 from backend.dataflow.basicblock import BasicBlock
 
 """
@@ -15,13 +16,12 @@ class CFG:
         self.edges = edges
 
         self.links = []
-
         for i in range(len(nodes)):
             self.links.append((set(), set()))
-
         for (u, v) in edges:
             self.links[u][1].add(v)
             self.links[v][0].add(u)
+            # print(u, v)
 
     def getBlock(self, id):
         return self.nodes[id]
@@ -40,3 +40,8 @@ class CFG:
 
     def iterator(self):
         return iter(self.nodes)
+
+    def judge(self, id: int):
+        if id != 0:
+            return self.getInDegree(id) != 0
+        return True

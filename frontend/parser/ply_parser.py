@@ -11,6 +11,7 @@ Refer to https://www.dabeaz.com/ply/ply.html for more details.
 """
 
 
+from ast import Continue
 import ply.yacc as yacc
 
 from frontend.ast.tree import *
@@ -119,6 +120,83 @@ def p_while(p):
     """
     p[0] = While(p[3], p[5])
 
+def p_for_full(p):
+    """
+    statement_matched : For LParen expression Semi expression Semi expression RParen statement_matched
+        | For LParen declaration Semi expression Semi expression RParen statement_matched
+    statement_unmatched : For LParen expression Semi expression Semi expression RParen statement_unmatched
+        | For LParen declaration Semi expression Semi expression RParen statement_unmatched
+    """
+    p[0] = For(init = p[3], cond = p[5],update= p[7],body = p[9])
+
+def p_for1(p):
+    """
+    statement_matched : For LParen Semi expression Semi expression RParen statement_matched
+    statement_unmatched : For LParen Semi expression Semi expression RParen statement_unmatched
+    """
+    p[0] = For(cond = p[4], update = p[6], body = p[8])
+    # 2 3
+
+def p_for2(p):
+    """
+    statement_matched : For LParen expression Semi Semi expression RParen statement_matched
+        | For LParen declaration Semi Semi expression RParen statement_matched
+    statement_unmatched : For LParen expression Semi Semi expression RParen statement_unmatched
+        | For LParen declaration Semi Semi expression RParen statement_unmatched
+    """
+    p[0] = For(init = p[3], update = p[6],body = p[8])
+    # 1 3
+
+def p_for3(p):
+    """
+    statement_matched : For LParen expression Semi expression Semi RParen statement_matched
+        | For LParen declaration Semi expression Semi RParen statement_matched
+    statement_unmatched : For LParen expression Semi expression Semi RParen statement_unmatched
+        | For LParen declaration Semi expression Semi RParen statement_unmatched
+    """
+    p[0] = For(init= p[3],cond= p[5],body= p[8])
+    # 1  2
+
+def p_for4(p):
+    """
+    statement_matched : For LParen expression Semi Semi RParen statement_matched
+        | For LParen declaration Semi Semi RParen statement_matched
+    statement_unmatched : For LParen expression Semi Semi RParen statement_unmatched
+        | For LParen declaration Semi Semi RParen statement_unmatched
+    """
+    p[0] = For(init=p[3],body=p[7])
+    # 1 
+
+def p_for5(p):
+    """
+    statement_matched : For LParen Semi expression Semi RParen statement_matched
+    statement_unmatched : For LParen Semi expression Semi RParen statement_unmatched
+    """
+    p[0] = For(cond=p[4], body=p[7])
+    # 2 
+
+def p_for6(p):
+    """
+    statement_matched : For LParen Semi Semi expression RParen statement_matched
+    statement_unmatched : For LParen Semi Semi expression RParen statement_unmatched
+    """
+    p[0] = For(update=p[5], body=p[7])
+    # 3
+
+def p_for7(p):
+    """
+    statement_matched : For LParen Semi Semi RParen statement_matched
+    statement_unmatched : For LParen Semi Semi RParen statement_unmatched
+    """
+    p[0] = For(body = p[6])
+    # null
+
+def p_do_while(p):
+    """
+    statement_matched : Do statement_matched While LParen expression RParen Semi
+    statement_unmatched : Do statement_unmatched While LParen expression RParen Semi
+    """
+    p[0] = DoWhile(p[5], p[2])
 
 def p_return(p):
     """
@@ -147,6 +225,12 @@ def p_break(p):
     statement_matched : Break Semi
     """
     p[0] = Break()
+
+def p_continue(p):
+    """
+    statement_matched : Continue Semi
+    """
+    p[0] = Continue()
 
 
 def p_opt_expression(p):

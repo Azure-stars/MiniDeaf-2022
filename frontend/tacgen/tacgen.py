@@ -1,3 +1,4 @@
+from ast import Pass
 from cmath import exp
 from textwrap import indent
 import utils.riscv as riscv
@@ -45,6 +46,9 @@ class TACGen(Visitor[FuncVisitor, None]):
 
     def visitBreak(self, stmt: Break, mv: FuncVisitor) -> None:
         mv.visitBranch(mv.getBreakLabel())
+
+    def visitContinue(self, stmt: Continue, mv: FuncVisitor) -> None:
+        mv.visitBranch(mv.getContinueLabel())
 
     def visitIdentifier(self, ident: Identifier, mv: FuncVisitor) -> None:
         """
@@ -116,6 +120,39 @@ class TACGen(Visitor[FuncVisitor, None]):
         mv.visitBranch(beginLabel)
         mv.visitLabel(breakLabel)
         mv.closeLoop()
+
+    def visitFor(self, stmt: For, mv: FuncVisitor) -> None:
+        beginLabel = mv.freshLabel()
+        loopLabel = mv.freshLabel()
+        breakLabel = mv.freshLabel()
+        mv.openLoop(breakLabel, loopLabel)
+        if stmt.init is not NULL:
+            stmt.init.accept(self,mv)
+        mv.visitLabel(beginLabel)
+        if stmt.cond is not NULL:
+            stmt.cond.accept(self,mv)
+            mv.visitCondBranch(tacop.CondBranchOp.BEQ, stmt.cond.getattr("val"), breakLabel)
+        stmt.body.accept(self, mv)
+        mv.visitLabel(loopLabel)
+        if stmt.update is not NULL:
+            stmt.update.accept(self, mv)
+        mv.visitBranch(beginLabel)
+        mv.visitLabel(breakLabel)
+        mv.closeLoop()
+
+    def visitDoWhile(self, stmt: DoWhile, mv: FuncVisitor) -> None:
+        beginLabel = mv.freshLabel()
+        loopLabel = mv.freshLabel()
+        breakLabel = mv.freshLabel()
+        mv.openLoop(breakLabel, loopLabel)
+        mv.visitLabel(beginLabel)
+        stmt.body.accept(self, mv)
+        mv.visitLabel(loopLabel)
+        stmt.cond.accept(self,mv)
+        mv.visitCondBranch(tacop.CondBranchOp.BNE, stmt.cond.getattr("val"), beginLabel)
+        mv.visitLabel(breakLabel)
+        mv.closeLoop()
+
 
     def visitUnary(self, expr: Unary, mv: FuncVisitor) -> None:
         expr.operand.accept(self, mv)
