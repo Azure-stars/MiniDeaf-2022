@@ -53,7 +53,9 @@
 
 
 
-3. 本程序处理悬吊else问题的逻辑是：令else与最近的未匹配的if进行匹配。
+3. `python`框架：
+
+   本程序处理悬吊else问题的逻辑是：令else与最近的未匹配的if进行匹配。
 
    处理方式：在语法分析时，本框架将statement划分为两种，一种是`statement_matched`，代表if与else成功匹配，另一种是`statement_unmatched`，代表仅有单个if，未与其他else匹配。
 
@@ -83,5 +85,4 @@
    4. 加入标签`skiplabel`，再加入赋值语句，将`otherwise`语句值赋予给`expr`节点，再加入`exitlabel`。
 
    上述逻辑实现了先求`then`与`otherwise`语句的值之后，根据条件`cond`语句的值进行选择赋值，从而做到不短路。
-
 
