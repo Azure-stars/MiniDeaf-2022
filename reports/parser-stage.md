@@ -108,48 +108,48 @@
    ```shell
    additive: multiplicative Q
    
-   Q:  '+' multiplicative | '-' multiplicative	
+   Q:  '+' multiplicative | '-' multiplicative	| epsilon
    
    ```
 
    
 
-   2. 出错程序的例子：
+2. 出错程序的例子：
 
-      ```python
-      int main() {
-          return 100 100;
-      }
-      ```
+   ```python
+   int main() {
+       return 100 100;
+   }
+   ```
 
-      出错处理方法：
+   出错处理方法：
 
-      在上文中，读取完第一个100后期望读取分号作为return语句的结尾，但此时读取到的是一个int类型的数字，从而导致报错。
+   在上文中，读取完第一个100后期望读取分号作为return语句的结尾，但此时读取到的是一个int类型的数字，从而导致报错。
 
-      预想的错误恢复机制为：
+   预想的错误恢复机制为：
 
-      若当前的下一个token并不是预期想要读取的token，则使用`lookahead()`消耗掉当前token，转而读取下一个token，直到token符合预期。
+   若当前的下一个token并不是预期想要读取的token，则使用`lookahead()`消耗掉当前token，转而读取下一个token，直到token符合预期。
 
-      对应代码为
+   对应代码为
 
-      ```python
-      def p_return(self: Parser) -> Return:
-          "return : 'return' expression ';'"
-          try:
-              lookahead = self.lookahead
-              lookahead("Return")
-              expr = p_expression(self)
-              while(self.next_token.type != 'Semi'):
-            		# 进行错误处理      
-                  print(self.next_token)
-                  lookahead()
-              
-              lookahead("Semi")
-              return Return(expr)
-          except:
-              raise DecafSyntaxError(self.next_token)
-      ```
+   ```python
+   def p_return(self: Parser) -> Return:
+       "return : 'return' expression ';'"
+       try:
+           lookahead = self.lookahead
+           lookahead("Return")
+           expr = p_expression(self)
+           while(self.next_token.type != 'Semi'):
+         		# 进行错误处理      
+               print(self.next_token)
+               lookahead()
+           
+           lookahead("Semi")
+           return Return(expr)
+       except:
+           raise DecafSyntaxError(self.next_token)
+   ```
 
-      该机制可以成功处理上述错误程序。
+   该机制可以成功处理上述错误程序。
 
-      
+   
