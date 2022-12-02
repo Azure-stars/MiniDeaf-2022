@@ -6,6 +6,7 @@ from .temp import Temp
 class Reg(Temp):
     def __init__(self, id: int, name: str) -> None:
         # need to consider
+        # 真实的寄存器？
         super().__init__(-id - 1)
         self.id = id
         self.name = name

@@ -42,12 +42,12 @@ class BasicBlock:
         self.id = id
         self.label = label
         self.locs: list[Loc] = locs.copy()
-
+        # locs为所有TAC语句的live变量集合
         self.define: set[int] = set()
         self.liveUse: set[int] = set()
         self.liveIn: set[int] = set()
         self.liveOut: set[int] = set()
-
+        # 整个基本块的live集合
     def isEmpty(self):
         return len(self.locs) == 0
 

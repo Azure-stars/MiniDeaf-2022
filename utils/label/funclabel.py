@@ -7,7 +7,7 @@ class FuncLabel(Label):
         self.func = name
 
     def __str__(self) -> str:
-        return "FUNCTION<%s>" % self.func
+        return "%s" % self.func
 
 
 MAIN_LABEL = FuncLabel("main")

@@ -130,6 +130,23 @@ class Riscv:
         def __str__(self) -> str:
             return ("beq " if self.op == CondBranchOp.BEQ else "bne ") + Riscv.FMT3.format(str(Riscv.ZERO), str(self.srcs[0]), str(self.target))
 
+    class Call(TACInstr):
+        def __init__(self, target: Label) -> None:
+            super().__init__(InstrKind.CALL,[],[],target)
+            self.target = target
+
+        def __str__(self) -> str:
+            return "call " + str(self.target)
+
+    class Param(TACInstr):
+        def __init__(self, src: Temp) -> None:
+            super().__init__(InstrKind.PARAM, [], [src], None)
+            self.value = src
+
+        def __str__(self) -> str:
+            # 不需要提供这个，需要我们单独处理放入到哪个寄存器中
+            return "param " + str(self.val)
+
     class Jump(TACInstr):
         def __init__(self, target: Label) -> None:
             super().__init__(InstrKind.JMP, [], [], target)
@@ -137,6 +154,17 @@ class Riscv:
         
         def __str__(self) -> str:
             return "j " + str(self.target)
+
+    class Add(NativeInstr):
+        def __init__(self, dst:Reg, src:Reg, offset: int) -> None:
+            super().__init__(InstrKind.SEQ, [dst], [src], None)
+            self.offset = offset
+
+        def __str__(self) -> str:
+            assert -2048 <= self.offset <= 2047  # Riscv imm [11:0]
+            return "addi " + Riscv.FMT3.format(
+                str(self.dsts[0]), str(self.srcs[0]), str(self.offset)
+            )
 
     class SPAdd(NativeInstr):
         def __init__(self, offset: int) -> None:

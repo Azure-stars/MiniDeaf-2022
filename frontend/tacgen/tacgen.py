@@ -24,17 +24,33 @@ class TACGen(Visitor[FuncVisitor, None]):
 
     # Entry of this phase
     def transform(self, program: Program) -> TACProg:
-        mainFunc = program.mainFunc()
-        pw = ProgramWriter(["main"])
-        # The function visitor of 'main' is special.
-        mv = pw.visitMainFunc()
-
-        mainFunc.body.accept(self, mv)
-        # Remember to call mv.visitEnd after the translation a function.
-        mv.visitEnd()
-
+        # 应当检查所有函数，不同函数之间的tac码彼此独立
+        pw = ProgramWriter(list(program.functions().keys()))
+        for name,func in program.functions().items():
+            if func.body == NULL:
+                # 未定义的函数不用生成
+                continue
+            mv = pw.visitFunc(name, len(func.parameterlist))
+            # 此时不用对参数列表进行tac生成，但需要先行分配寄存器
+            for para in func.parameterlist.children:
+                para.accept(self, mv)
+            func.body.accept(self, mv)
+            # The function visitor of 'main' is special.
+            # Remember to call mv.visitEnd after the translation a function.
+            mv.visitEnd()
         # Remember to call pw.visitEnd before finishing the translation phase.
         return pw.visitEnd()
+
+    def visitCall(self, call: Call, mv: FuncVisitor) ->None:
+        # 生成PARAMS 和 CALL
+        # 先生成PARAMS
+        for param in call.argument_list.children:
+            param.accept(self, mv)
+
+        for param in call.argument_list.children:
+            # 遍历完参数再生成CALL语句
+            mv.visitParam(param.getattr("val"))
+        call.setattr('val', mv.visitCall(mv.getFuncLabel(call.ident.value)))  
 
     def visitBlock(self, block: Block, mv: FuncVisitor) -> None:
         for child in block:
@@ -49,6 +65,11 @@ class TACGen(Visitor[FuncVisitor, None]):
 
     def visitContinue(self, stmt: Continue, mv: FuncVisitor) -> None:
         mv.visitBranch(mv.getContinueLabel())
+
+    def visitParameter(self, para: Parameter, mv: FuncVisitor) -> None:
+        symbol = para.getattr('symbol')
+        symbol.temp = mv.freshTemp()
+        # 为参数提供寄存器，从而方便调用
 
     def visitIdentifier(self, ident: Identifier, mv: FuncVisitor) -> None:
         """
@@ -152,7 +173,6 @@ class TACGen(Visitor[FuncVisitor, None]):
         mv.visitCondBranch(tacop.CondBranchOp.BNE, stmt.cond.getattr("val"), beginLabel)
         mv.visitLabel(breakLabel)
         mv.closeLoop()
-
 
     def visitUnary(self, expr: Unary, mv: FuncVisitor) -> None:
         expr.operand.accept(self, mv)

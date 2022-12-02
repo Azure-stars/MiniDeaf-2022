@@ -35,20 +35,25 @@ def binary(p):
         p[0] = Binary(BinaryOp.backward_search(p[2]), p[1], p[3])
         # 正常的二元语句
 
-
 def p_empty(p: yacc.YaccProduction):
     """
     empty :
     """
     pass
 
+def p_program_empty(p):
+    """
+    program : empty
+    """
+    p[0] = Program()
 
 def p_program(p):
     """
-    program : function
+    program : program function
     """
-    p[0] = Program(p[1])
-
+    if p[2] is not NULL:
+        p[1].children.append(p[2])
+    p[0] = p[1]
 
 def p_type(p):
     """
@@ -56,15 +61,70 @@ def p_type(p):
     """
     p[0] = TInt()
 
+def p_function_statement(p):
+    """
+    function : type Identifier LParen parameterlist RParen Semi
+    """
+    p[0] = Function(p[1], p[2], p[4])
+    # 这里都是按照范式来规定的下标
+    # 是函数的声明
+    # function: 传入参数为类型名，函数名，参数列表
 
 def p_function_def(p):
     """
-    function : type Identifier LParen RParen LBrace block RBrace
+    function : type Identifier LParen parameterlist RParen LBrace block RBrace
     """
-    p[0] = Function(p[1], p[2], p[6])
+    p[0] = Function(p[1], p[2], p[4], p[7])
     # 这里都是按照范式来规定的下标
-    # function: 传入参数为类型名，函数名，函数体
+    # function: 传入参数为类型名，函数名，参数列表，函数体
 
+def p_parameterlist_empty(p):
+    """
+    parameterlist : empty
+    """
+    p[0] = ParameterList()
+
+def p_parameter_single(p):
+    """
+    parameterlist : parameter
+    """
+    p[0] = ParameterList()
+    p[0].children.append(p[1])
+
+def p_parameterlist_multi(p):
+    """
+    parameterlist : parameterlist Comma parameter
+    """
+    if p[3] is not NULL:
+        p[1].children.append(p[3])
+    p[0] = p[1]
+
+def p_parameter(p):
+    """
+    parameter : type Identifier
+    """
+    p[0] = Parameter(p[1], p[2])
+
+def p_expressionlist_empty(p):
+    """
+    expressionlist : empty
+    """
+    p[0] = ExpressionList()
+
+def p_expressionlist_single(p):
+    """
+    expressionlist : expression
+    """
+    p[0] = ExpressionList()
+    p[0].children.append(p[1])
+
+def p_expressionlist_multi(p):
+    """
+    expressionlist : expressionlist Comma expression
+    """
+    if p[3] is not NULL:
+        p[1].children.append(p[3])
+    p[0] = p[1]
 
 def p_block(p):
     """
@@ -73,7 +133,6 @@ def p_block(p):
     if p[2] is not NULL:
         p[1].children.append(p[2])
     p[0] = p[1]
-
 
 def p_block_empty(p):
     """
@@ -283,6 +342,13 @@ def p_expression_precedence(p):
     p[0] = p[1]
     # 优先级判断
     # 可以看出这是连续的产生式
+
+def p_postfix(p):
+    """
+    postfix : Identifier LParen expressionlist RParen
+    """
+    p[0] = Call(p[1], p[3])
+ 
 
 def p_unary_expression(p):
     """

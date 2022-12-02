@@ -26,7 +26,9 @@ class TreePrinter:
             self.printLine(f"{element.name} {self.l}")
             self.incIndent()
             for it in element:
+                # print(it)
                 self.work(it)
+            # print("\n")
             self.decIndent()
             self.printLine(self.r)
 
@@ -37,7 +39,9 @@ class TreePrinter:
                 self.printLine("<empty>")
             else:
                 for it in element:
+                    # print(it)
                     self.work(it)
+                # print("\n")
             self.decIndent()
 
         else:

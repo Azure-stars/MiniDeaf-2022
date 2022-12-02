@@ -52,7 +52,7 @@ t_LessEqual = "<="
 t_Greater = ">"
 t_GreaterEqual = ">="
 t_Assign = "="
-
+t_Comma = ","
 
 def t_Integer(t):
     r"[0-9]+"  # can be accessed from `t_Interger.__doc__`

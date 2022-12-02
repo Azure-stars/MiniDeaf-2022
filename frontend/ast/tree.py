@@ -85,12 +85,14 @@ class Function(Node):
         self,
         ret_t: TypeLiteral,
         ident: Identifier,
-        body: Block,
+        parameterlist: ParameterList,
+        body: Optional[Block] = None,
     ) -> None:
         super().__init__("function")
         self.ret_t = ret_t
         self.ident = ident
-        self.body = body
+        self.parameterlist = parameterlist
+        self.body = body or NULL
         # 函数体由   返回值类型 + 函数名称 + 函数体组成
         # 这里似乎没有参数
 
@@ -98,14 +100,47 @@ class Function(Node):
         return (
             self.ret_t,
             self.ident,
+            self.parameterlist,
             self.body,
         )[key]
 
     def __len__(self) -> int:
-        return 3
+        return 4
 
     def accept(self, v: Visitor[T, U], ctx: T):
         return v.visitFunction(self, ctx)
+
+class Parameter(Node):
+    """
+    AST node that represents a parameter for a function.
+    """
+    def __init__(
+        self,
+        var_t: TypeLiteral,
+        ident: Identifier,
+    ) -> None:
+        super().__init__('parameter')
+        self.var_t = var_t
+        self.ident = ident
+    
+    def __getitem__(self, key: int) -> Node:
+        return (self.var_t, self.ident)[key]
+
+    def __len__(self) -> int:
+        return 2
+    
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitParameter(self, ctx)
+
+class Expression(Node):
+    """
+    Abstract type that represents an evaluable expression.
+    可计算的表达式
+    """
+
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+        self.type: Optional[DecafType] = None
 
 
 class Statement(Node):
@@ -120,6 +155,63 @@ class Statement(Node):
         """
         return False
 
+class ParameterList(Statement,ListNode[Parameter]):
+    """
+    AST node that represents parameters list for a function.
+    """
+
+    def __init__(
+        self,
+         *children:Parameter
+    ) -> None:
+        super().__init__('parameterlist',list(children))
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitParameterList(self, ctx)     
+
+    def is_block(self) -> bool:
+        return False  
+
+class ExpressionList(Statement,ListNode[Expression]):
+    """
+    AST node that represents expression list for a function
+    """
+
+    def __init__(
+        self,
+        *children: Expression
+    ) -> None:
+        super().__init__('expressionlist',list(children))
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitExpressionList(self, ctx)
+
+    def is_block(self) -> bool:
+        return False
+
+class Call(Expression):
+    """
+    AST node that represents call a function
+    """
+    def __init__(
+        self,
+        ident: Identifier,
+        argument_list: ExpressionList,
+    ) -> None:
+        super().__init__("call")
+        self.ident = ident
+        self.argument_list = argument_list 
+    def __getitem__(self, key: int) -> Node:
+        return (
+            self.ident,
+            self.argument_list,
+        )[key]
+
+    def __len__(self) -> int:
+        return 2
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitCall(self, ctx)
 
 class Return(Statement):
     """
@@ -314,16 +406,6 @@ class Declaration(Node):
     def accept(self, v: Visitor[T, U], ctx: T):
         return v.visitDeclaration(self, ctx)
 
-
-class Expression(Node):
-    """
-    Abstract type that represents an evaluable expression.
-    可计算的表达式
-    """
-
-    def __init__(self, name: str) -> None:
-        super().__init__(name)
-        self.type: Optional[DecafType] = None
 
 
 class Unary(Expression):

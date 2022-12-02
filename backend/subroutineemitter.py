@@ -45,3 +45,19 @@ class SubroutineEmitter(ABC):
     @abstractmethod
     def emitEnd(self):
         raise NotImplementedError
+        
+    @abstractmethod
+    def emitMoveReg(self, dst: Reg, src: Temp):
+        raise NotImplementedError
+
+    @abstractmethod
+    def emitStoreParam(self, src:Temp, index: int):
+        raise NotImplementedError
+
+    @abstractmethod
+    def emitPopParam(self, offset: int):
+        raise NotImplementedError
+
+    @abstractmethod
+    def emitGetParam(self, dst: Reg, index: int):
+        raise NotImplementedError

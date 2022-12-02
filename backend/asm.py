@@ -18,10 +18,11 @@ class Asm:
         analyzer = LivenessAnalyzer()
 
         for func in prog.funcs:
+            # 一个函数一个
             pair = self.emitter.selectInstr(func)
             builder = CFGBuilder()
             cfg: CFG = builder.buildFrom(pair[0])
             analyzer.accept(cfg)
-            self.regAlloc.accept(cfg, pair[1])
+            self.regAlloc.accept(cfg, pair[1], func.numArgs)
 
         return self.emitter.emitEnd()

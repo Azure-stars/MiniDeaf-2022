@@ -28,7 +28,6 @@ class Namer(Visitor[ScopeStack, None]):
         # Global scope. You don't have to consider it until Step 9.
         program.globalScope = GlobalScope
         ctx = ScopeStack(program.globalScope)
-
         program.accept(self, ctx)
         return program
 
@@ -36,11 +35,63 @@ class Namer(Visitor[ScopeStack, None]):
         # Check if the 'main' function is missing
         if not program.hasMainFunc():
             raise DecafNoMainFuncError
-
-        program.mainFunc().accept(self, ctx)
+        for func in program.children:
+            # 先对所有函数进行声明
+            new_symbol = FuncSymbol(func.ident.value, func.ret_t.type, NULL)
+            for param in func.parameterlist.children:
+                new_symbol.addParaType(param.var_t)
+            ctx.globalscope.declare(new_symbol)
+        for child in program:
+            child.accept(self, ctx)
 
     def visitFunction(self, func: Function, ctx: ScopeStack) -> None:
-        func.body.accept(self, ctx)
+        # 要检查是否重复定义或者重复声明，重复声明允许类型相同。
+        if ctx.globalscope.containsKey(func.ident.value):
+            temp = ctx.globalscope.get(func.ident.value)
+            # 在全局符号表里面找
+            if(isinstance(temp, FuncSymbol)):
+                # 都是函数符号
+                # 先检查是否参数列表一致
+                if len(temp.para_type) != len(func.parameterlist.children):
+                    raise DecafDeclConflictError(func.ident.value)  
+                    # 声明了两个不同的函数
+                for index in range(len(temp.para_type)):
+                    if temp.para_type[index] != func.parameterlist.children[index].var_t:
+                        # 参数列表不一致
+                        raise DecafDeclConflictError(func.ident.value)
+                if temp.scope != NULL and func.body != NULL:
+                    # 重复定义函数
+                    raise DecafGlobalVarDefinedTwiceError(func.ident.value)
+
+        new_symbol = FuncSymbol(func.ident.value, func.ret_t.type, NULL)
+        # 现在要同时visit参数与函数体，并共享作用域
+        new_score = Scope(ScopeKind.LOCAL)
+        ctx.open(new_score)
+        for param in func.parameterlist.children:
+            new_symbol.addParaType(param.var_t)
+        func.parameterlist.accept(self, ctx)
+        if func.body != NULL:
+            # 利用scope是否为空来判断是否为声明
+            new_symbol.scope = new_score
+            
+            # 覆盖原有符号，将函数设置为定义，注意需要在全局的符号表中进行检验
+        ctx.globalscope.declare(new_symbol)
+
+        if func.body != NULL:
+            # 保证body不为空
+            for child in func.body.children:
+                child.accept(self, ctx)
+        ctx.close()
+
+    def visitParameterList(self, parameterlist: ParameterList, ctx: ScopeStack) -> None:
+        # 逐个检查参数
+        for parameter in parameterlist:
+            parameter.accept(self, ctx)
+
+    def visitExpressionList(self, expressionlist: ExpressionList, ctx: ScopeStack) -> None:
+        # 检查声明中的实参
+        for expression in expressionlist:
+            expression.accept(self, ctx)
 
     def visitBlock(self, block: Block, ctx: ScopeStack) -> None:
         new_score = Scope(ScopeKind.LOCAL)
@@ -117,6 +168,39 @@ class Namer(Visitor[ScopeStack, None]):
         decl.setattr("symbol", new_symbol)
         if decl.init_expr != NULL:
             decl.init_expr.accept(self, ctx)
+
+    def visitCall(self, call : Call, ctx : ScopeStack) -> None:
+        # 设置属性值
+        # 还要检查在当前作用域有没有这个函数
+        if ctx.currentScope() != ctx.globalscope:
+            # 检查全局作用域
+            temp = ctx.findConflict(call.ident.value)
+            if temp != None:
+                # 局部重名
+                raise DecafGlobalVarDefinedTwiceError(call.ident.value)
+
+        if ctx.globalscope.containsKey(call.ident.value):
+            # 找到对应的函数符号
+            fun_symbol = ctx.globalscope.get(call.ident.value)
+            if isinstance(fun_symbol, FuncSymbol):
+                call.ident.accept(self, ctx)
+                if len(call.argument_list) != len(fun_symbol.para_type):
+                    raise DecafBadFuncCallError(call.ident.value)
+                call.argument_list.accept(self, ctx)
+            else:
+                raise DecafBadFuncCallError(call.ident.value)
+        else:
+        #     print("9")
+            raise DecafBadFuncCallError(call.ident.value)
+
+    def visitParameter(self, para: Parameter, ctx: ScopeStack) -> None:
+        # 相当于声明变量，需要加入符号表并且新建节点
+        temp = ctx.findConflict(para.ident.value)
+        if temp != None:
+            raise DecafDeclConflictError(para.ident.value)
+        new_symbol = VarSymbol(para.ident.value, para.var_t.type)
+        ctx.declare(new_symbol)
+        para.setattr("symbol", new_symbol)
 
     def visitAssignment(self, expr: Assignment, ctx: ScopeStack) -> None:
         """

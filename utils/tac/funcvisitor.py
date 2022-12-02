@@ -33,6 +33,9 @@ class FuncVisitor:
     def freshLabel(self) -> Label:
         return self.ctx.freshLabel()
 
+    def getFuncLabel(self, name:str) -> FuncLabel:
+        return FuncLabel(name)
+
     # To count how many temporary variables have been used.
     def getUsedTemp(self) -> int:
         return self.nextTempId
@@ -48,6 +51,11 @@ class FuncVisitor:
             self.func.add(LoadImm4(temp, value))
         else:
             self.func.add(LoadStrConst(temp, value))
+        return temp
+
+    def visitCall(self, target: Label) -> Temp:
+        temp = self.freshTemp()
+        self.func.add(Call(temp, target))
         return temp
 
     def visitUnary(self, op: UnaryOp, operand: Temp) -> Temp:
@@ -71,6 +79,9 @@ class FuncVisitor:
 
     def visitCondBranch(self, op: CondBranchOp, cond: Temp, target: Label) -> None:
         self.func.add(CondBranch(op, cond, target))
+
+    def visitParam(self, value:Temp) -> None:
+        self.func.add(Param(value))
 
     def visitReturn(self, value: Optional[Temp]) -> None:
         self.func.add(Return(value))

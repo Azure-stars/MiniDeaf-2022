@@ -179,6 +179,16 @@ class Return(TACInstr):
         v.visitReturn(self)
 
 
+class Param(TACInstr):
+    def __init__(self, value: Temp) -> None:
+        super().__init__(InstrKind.RET, [], [value], None)
+        self.value = value
+    def __str__(self) -> str:
+        return "PARAM " + str(self.value)
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitParam(self)
+
 # Annotation (used for debugging).
 class Memo(TACInstr):
     def __init__(self, msg: str) -> None:
@@ -202,3 +212,17 @@ class Mark(TACInstr):
 
     def accept(self, v: TACVisitor) -> None:
         v.visitMark(self)
+
+class Call(TACInstr):
+    def __init__(self, value: Temp, label: Label) -> None:
+        super().__init__(InstrKind.CALL, [value], [], label)
+        self.value = value
+        self.label = label
+        # value为返回值
+        # label为call的label
+    
+    def __str__(self) -> str:
+        return str(self.value) + " = CALL %s" % str(self.label)
+    
+    def accept(self, v: TACVisitor) -> None:
+        v.visitCall(self)
