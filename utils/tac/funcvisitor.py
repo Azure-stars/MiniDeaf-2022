@@ -40,6 +40,17 @@ class FuncVisitor:
     def getUsedTemp(self) -> int:
         return self.nextTempId
 
+    def visitGlobalAddressLoad(self, name:str, dst: Temp) -> Temp:
+        self.func.add(GlobalAddressLoad(name, dst))
+        return dst
+
+    def visitGlobalOffsetStore(self, src:Temp, base:Temp, offset: int) -> None:
+        self.func.add(GlobalOffsetStore(src, base, offset))
+
+    def visitGlobalOffsetLoad(self, dst: Temp, src: Temp, offset: int) -> Temp:
+        self.func.add(GlobalOffsetLoad(dst, src, offset))
+        return dst
+
     # In fact, the following methods can be named 'appendXXX' rather than 'visitXXX'. E.g., by calling 'visitAssignment', you add an assignment instruction at the end of current function.
     def visitAssignment(self, dst: Temp, src: Temp) -> Temp:
         self.func.add(Assign(dst, src))

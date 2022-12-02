@@ -1,5 +1,3 @@
-from typing import Sequence, Tuple
-
 from backend.asmemitter import AsmEmitter
 from utils.error import IllegalArgumentException
 from utils.label.label import Label, LabelKind
@@ -8,6 +6,9 @@ from utils.tac.reg import Reg
 from utils.tac.tacfunc import TACFunc
 from utils.tac.tacinstr import *
 from utils.tac.tacvisitor import TACVisitor
+
+from frontend.symbol.varsymbol import VarSymbol
+from frontend.typecheck.namer import ScopeStack
 
 from ..subroutineemitter import SubroutineEmitter
 from ..subroutineinfo import SubroutineInfo
@@ -22,12 +23,36 @@ class RiscvAsmEmitter(AsmEmitter):
         self,
         allocatableRegs: list[Reg],
         callerSaveRegs: list[Reg],
+        ctx: ScopeStack
     ) -> None:
         super().__init__(allocatableRegs, callerSaveRegs)
 
     
         # the start of the asm code
         # int step10, you need to add the declaration of global var here
+        self.printer.println('.data')
+
+        for symbol in ctx.globalscope.symbols.values():
+            # 获取所有全局符号
+            if isinstance(symbol, VarSymbol):
+                if symbol.isGlobal and symbol.initValue != None:
+                    # 是全局变量
+                    self.printer.buffer += ('.global ' + symbol.name) + '\n'
+                    self.printer.buffer += (symbol.name + ':') + '\n'
+                    # 输出具体值
+                    self.printer.println('.word ' + str(symbol.initValue))
+        self.printer.println('.bss')
+
+        for symbol in ctx.globalscope.symbols.values():
+            # 获取所有全局符号
+            if isinstance(symbol, VarSymbol):
+                if symbol.isGlobal and symbol.initValue == None:
+                    # 是全局变量
+                    self.printer.buffer += ('.global ' + symbol.name) + '\n'
+                    self.printer.buffer += (symbol.name + ':') + '\n'
+                    # 输出具体值
+                    self.printer.println('.space 4')
+
         self.printer.println(".text")
         self.printer.println(".global main")
         self.printer.println("")
@@ -110,6 +135,16 @@ class RiscvAsmEmitter(AsmEmitter):
         
         def visitBranch(self, instr: Branch) -> None:
             self.seq.append(Riscv.Jump(instr.target))
+
+        def visitGlobalAddressLoad(self, instr: GlobalAddressLoad) -> None:
+            self.seq.append(Riscv.GlobalAddressLoad(instr.name, instr.dst))
+
+        def visitGlobalOffsetLoad(self, instr: GlobalOffsetLoad) -> None:
+            self.seq.append(Riscv.GlobalOffsetLoad(instr.dst, instr.src, instr.offset))
+
+        def visitGlobalOffsetStore(self, instr: GlobalOffsetStore) -> None:
+            self.seq.append(Riscv.GlobalOffsetStore(instr.srcs[1], instr.srcs[0], instr.offset))
+
 
         # in step9, you need to think about how to pass the parameters and how to store and restore callerSave regs
 

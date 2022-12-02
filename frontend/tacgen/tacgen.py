@@ -6,6 +6,7 @@ from frontend.ast import node
 from frontend.ast.tree import *
 from frontend.ast.visitor import Visitor
 from frontend.symbol.varsymbol import VarSymbol
+from frontend.typecheck.namer import ScopeStack
 from frontend.type.array import ArrayType
 from utils.tac import tacop
 from utils.tac.funcvisitor import FuncVisitor
@@ -19,13 +20,17 @@ The TAC generation phase: translate the abstract syntax tree into three-address 
 
 
 class TACGen(Visitor[FuncVisitor, None]):
-    def __init__(self) -> None:
+    def __init__(self, ctx: ScopeStack) -> None:
+        self.ctx = ctx
         pass
 
     # Entry of this phase
     def transform(self, program: Program) -> TACProg:
         # 应当检查所有函数，不同函数之间的tac码彼此独立
         pw = ProgramWriter(list(program.functions().keys()))
+
+        # 其实全局变量可以在一开始就生成出来，存在符号表里面
+
         for name,func in program.functions().items():
             if func.body == NULL:
                 # 未定义的函数不用生成
@@ -76,7 +81,16 @@ class TACGen(Visitor[FuncVisitor, None]):
         1. Set the 'val' attribute of ident as the temp variable of the 'symbol' attribute of ident.
         """
         symbol = ident.getattr("symbol")
-        ident.setattr("val", symbol.temp)
+        if isinstance(symbol, VarSymbol):
+            if symbol.isGlobal:
+                mid_temp = mv.freshTemp()
+                mv.visitGlobalAddressLoad(ident.value, mid_temp)
+                symbol.temp = mv.freshTemp()
+                ident.setattr('val', mv.visitGlobalOffsetLoad(symbol.temp, mid_temp, 0))
+            else:
+                ident.setattr("val", symbol.temp)
+        else:
+            ident.setattr("val", symbol.temp)
 
     def visitDeclaration(self, decl: Declaration, mv: FuncVisitor) -> None:
         """
@@ -101,7 +115,15 @@ class TACGen(Visitor[FuncVisitor, None]):
         expr.rhs.accept(self, mv)
         dst = expr.lhs.getattr("val")
         src = expr.rhs.getattr("val")
+        # 如果全局变量在这里被修改了，需要额外添加tac码反映到实际的地址
         expr.setattr("val", mv.visitAssignment(dst, src))
+        if self.ctx.globalscope.containsKey(expr.lhs.value):
+            now_symbol = self.ctx.globalscope.get(expr.lhs.value)
+            if isinstance(now_symbol, VarSymbol):
+                mid_temp = mv.freshTemp()
+                mv.visitGlobalAddressLoad(expr.lhs.value, mid_temp)
+                mv.visitGlobalOffsetStore(dst, mid_temp, 0)
+                # 存进全局变量的地址
 
     def visitIf(self, stmt: If, mv: FuncVisitor) -> None:
         stmt.cond.accept(self, mv)

@@ -1,6 +1,5 @@
 from os import EX_OSERR
 from typing import Protocol, TypeVar, cast
-from frontend.ast.node import Node, NullType
 from frontend.ast.tree import *
 from frontend.ast.visitor import RecursiveVisitor, Visitor
 from frontend.scope.globalscope import GlobalScope
@@ -24,23 +23,17 @@ class Namer(Visitor[ScopeStack, None]):
         pass
 
     # Entry of this phase
-    def transform(self, program: Program) -> Program:
+    def transform(self, program: Program) -> tuple[Program, ScopeStack]:
         # Global scope. You don't have to consider it until Step 9.
         program.globalScope = GlobalScope
         ctx = ScopeStack(program.globalScope)
         program.accept(self, ctx)
-        return program
+        return (program,ctx)
 
     def visitProgram(self, program: Program, ctx: ScopeStack) -> None:
         # Check if the 'main' function is missing
         if not program.hasMainFunc():
             raise DecafNoMainFuncError
-        for func in program.children:
-            # 先对所有函数进行声明
-            new_symbol = FuncSymbol(func.ident.value, func.ret_t.type, NULL)
-            for param in func.parameterlist.children:
-                new_symbol.addParaType(param.var_t)
-            ctx.globalscope.declare(new_symbol)
         for child in program:
             child.accept(self, ctx)
 
@@ -62,7 +55,9 @@ class Namer(Visitor[ScopeStack, None]):
                 if temp.scope != NULL and func.body != NULL:
                     # 重复定义函数
                     raise DecafGlobalVarDefinedTwiceError(func.ident.value)
-
+            else:
+                # 全局变量符号，有问题
+                raise DecafGlobalVarDefinedTwiceError(func.ident.value)
         new_symbol = FuncSymbol(func.ident.value, func.ret_t.type, NULL)
         # 现在要同时visit参数与函数体，并共享作用域
         new_score = Scope(ScopeKind.LOCAL)
@@ -73,10 +68,8 @@ class Namer(Visitor[ScopeStack, None]):
         if func.body != NULL:
             # 利用scope是否为空来判断是否为声明
             new_symbol.scope = new_score
-            
             # 覆盖原有符号，将函数设置为定义，注意需要在全局的符号表中进行检验
         ctx.globalscope.declare(new_symbol)
-
         if func.body != NULL:
             # 保证body不为空
             for child in func.body.children:
@@ -152,6 +145,22 @@ class Namer(Visitor[ScopeStack, None]):
         1. Refer to the implementation of visitBreak.
         """
 
+    def visitGlobalDeclaration(self, decl: GlobalDeclaration, ctx: ScopeStack) -> None:
+        if ctx.globalscope.containsKey(decl.ident.value):
+            # 重复定义，必定为错误
+            # 不允许同时有声明与定义
+            raise DecafGlobalVarDefinedTwiceError(decl.ident.value)
+
+        now_symbol = VarSymbol(decl.ident.value, decl.var_t.type, True)
+        if decl.init_expr != NULL:
+            decl.init_expr.accept(self, ctx)
+            now_symbol.setInitValue(decl.init_expr.value)
+            # 标记其为已经定义
+        ctx.globalscope.declare(now_symbol)
+        # print(now_symbol.isGlobal)
+        decl.setattr("symbol", now_symbol)
+
+
     def visitDeclaration(self, decl: Declaration, ctx: ScopeStack) -> None:
         """
         1. Use ctx.findConflict to find if a variable with the same name has been declared.
@@ -190,7 +199,6 @@ class Namer(Visitor[ScopeStack, None]):
             else:
                 raise DecafBadFuncCallError(call.ident.value)
         else:
-        #     print("9")
             raise DecafBadFuncCallError(call.ident.value)
 
     def visitParameter(self, para: Parameter, ctx: ScopeStack) -> None:

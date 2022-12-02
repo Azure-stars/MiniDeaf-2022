@@ -45,13 +45,13 @@ class ListNode(Node, Generic[_T]):
         return None if ret.count(None) == len(ret) else ret
 
 
-class Program(ListNode["Function"]):
+class Program(ListNode[Union["Function",'GlobalDeclaration']]):
     """
     AST root. It should have only one children before step9.
     因为没有函数，只有一个主函数入口
     """
 
-    def __init__(self, *children: Function) -> None:
+    def __init__(self, *children: Union[Function, GlobalDeclaration]) -> None:
         super().__init__("program", list(children))
 
     def functions(self) -> dict[str, Function]:
@@ -154,6 +154,7 @@ class Statement(Node):
         Determine if this type of statement is `Block`.
         """
         return False
+
 
 class ParameterList(Statement,ListNode[Parameter]):
     """
@@ -377,6 +378,32 @@ class Block(Statement, ListNode[Union["Statement", "Declaration"]]):
 
     def is_block(self) -> bool:
         return True
+
+class GlobalDeclaration(Node):
+    """
+    AST node that represents for the global variable
+    """
+    # 肯定写在declaration旁边啊（喜
+    def __init__(
+        self,
+        var_t: TypeLiteral,
+        ident: Identifier,
+        init_expr: Optional[IntLiteral] = None,
+    ) -> None:
+        super().__init__("globaldeclaration")
+        self.var_t = var_t
+        self.ident = ident
+
+        self.init_expr = init_expr or NULL
+
+    def __getitem__(self, key: int) -> Node:
+        return (self.var_t, self.ident, self.init_expr)[key]
+
+    def __len__(self) -> int:
+        return 3
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitGlobalDeclaration(self, ctx)
 
 
 class Declaration(Node):

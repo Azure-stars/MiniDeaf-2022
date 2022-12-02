@@ -86,6 +86,38 @@ class Riscv:
         def isLabel(self) -> bool:
             return True
 
+    class GlobalOffsetLoad(TACInstr):
+        def __init__(self, dst: Temp, src: Temp, offset: int) -> None:
+            # 生成全局变量的TAC
+            super().__init__(InstrKind.SEQ, [dst], [src], None)
+            self.offset = offset
+            # name为全局变量的名字
+
+        def __str__(self) -> str:
+            return "lw %s, %d(%s)" % (self.dsts[0], self.offset, self.srcs[0])
+
+    class GlobalAddressLoad(TACInstr):
+        def __init__(self, name: str, dst: Temp) -> None:
+            # 生成全局变量的TAC
+            super().__init__(InstrKind.SEQ, [dst], [], None)
+            self.name = name
+            # name为全局变量的名字
+
+        def __str__(self) -> str:
+            return "la %s, %s" % (self.dsts[0], self.name)
+
+    class GlobalOffsetStore(TACInstr):
+        def __init__(self, src: Temp, base: Temp, offset: int) -> None:
+            # 生成全局变量的TAC
+            super().__init__(InstrKind.SEQ, [], [base, src], None)
+            self.offset = offset
+            # name为全局变量的名字
+
+        def __str__(self) -> str:
+            return "sw %s, %d(%s)" % (self.srcs[1],  self.offset, self.srcs[0])
+
+
+
     class LoadImm(TACInstr):
         def __init__(self, dst: Temp, value: int) -> None:
             super().__init__(InstrKind.SEQ, [dst], [], None)

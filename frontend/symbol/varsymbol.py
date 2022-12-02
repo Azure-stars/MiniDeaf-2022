@@ -1,5 +1,7 @@
 from utils.tac.temp import Temp
 
+from typing import Optional
+
 from .symbol import *
 
 """
@@ -12,7 +14,7 @@ class VarSymbol(Symbol):
         super().__init__(name, type)
         self.temp: Temp
         self.isGlobal = isGlobal
-        self.initValue = 0
+        self.initValue : Optional[int] = None
 
     def __str__(self) -> str:
         return "variable %s : %s" % (self.name, str(self.type))

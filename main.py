@@ -8,7 +8,7 @@ from frontend.ast.tree import Program
 from frontend.lexer import lexer
 from frontend.parser import parser
 from frontend.tacgen.tacgen import TACGen
-from frontend.typecheck.namer import Namer
+from frontend.typecheck.namer import Namer,ScopeStack
 from frontend.typecheck.typer import Typer
 from utils.printtree import TreePrinter
 from utils.riscv import Riscv
@@ -43,21 +43,21 @@ def step_parse(args: argparse.Namespace):
 
 
 # IR generation stage: Abstract syntax tree -> Three-address code
-def step_tac(p: Program):
+def step_tac(p: Program) -> tuple[TACProg, ScopeStack]:
     namer = Namer()
-    p = namer.transform(p)
+    p,ctx = namer.transform(p)
     typer = Typer()
     p = typer.transform(p)
 
-    tacgen = TACGen()
+    tacgen = TACGen(ctx)
     tac_prog = tacgen.transform(p)
 
-    return tac_prog
+    return tac_prog,ctx
 
 
 # Target code generation stage: Three-address code -> RISC-V assembly code
-def step_asm(p: TACProg):
-    riscvAsmEmitter = RiscvAsmEmitter(Riscv.AllocatableRegs, Riscv.CallerSaved)
+def step_asm(p: TACProg, ctx: ScopeStack):
+    riscvAsmEmitter = RiscvAsmEmitter(Riscv.AllocatableRegs, Riscv.CallerSaved, ctx)
     asm = Asm(riscvAsmEmitter, BruteRegAlloc(riscvAsmEmitter))
     prog = asm.transform(p)
     return prog
@@ -76,13 +76,14 @@ def main():
         return r
 
     def _tac():
-        tac = step_tac(_parse())
+        (tac, ctx) = step_tac(_parse())
         # print("\nGenerated TAC:\n")
         # tac.printTo()
-        return tac
+        return tac, ctx
 
     def _asm():
-        asm = step_asm(_tac())
+        (tac, ctx) = _tac()
+        asm = step_asm(tac, ctx)
         # print("\nGenerated ASM:\n")
         # print(asm)
         return asm
@@ -91,7 +92,7 @@ def main():
         prog = _asm()
         print(prog)
     elif args.tac:
-        prog = _tac()
+        (prog,_) = _tac()
         prog.printTo()
     elif args.parse:
         prog = _parse()

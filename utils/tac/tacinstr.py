@@ -52,6 +52,48 @@ class TACInstr:
     def accept(self, v: TACVisitor) -> None:
         pass
 
+class GlobalOffsetLoad(TACInstr):
+    def __init__(self, dst: Temp, src: Temp, offset: int) -> None:
+        # 生成全局变量的TAC
+        super().__init__(InstrKind.SEQ, [dst], [src], None)
+        self.offset = offset
+        self.src = src
+        self.dst = dst
+        # name为全局变量的名字
+
+    def __str__(self) -> str:
+        return "%s = LOAD %s, %d" % (self.dst, self.src, self.offset)
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitGlobalOffsetLoad(self)
+
+class GlobalOffsetStore(TACInstr):
+    def __init__(self, src: Temp, base: Temp, offset: int) -> None:
+        # 生成全局变量的TAC
+        super().__init__(InstrKind.SEQ, [], [base, src], None)
+        self.offset = offset
+        # name为全局变量的名字
+
+    def __str__(self) -> str:
+        return "STORE %s %s, %d" % (self.srcs[1], self.srcs[0], self.offset)
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitGlobalOffsetStore(self)
+
+
+class GlobalAddressLoad(TACInstr):
+    def __init__(self, name: str, dst: Temp) -> None:
+        # 生成全局变量的TAC
+        super().__init__(InstrKind.SEQ, [dst], [], None)
+        self.name = name
+        self.dst = dst
+        # name为全局变量的名字
+
+    def __str__(self) -> str:
+        return "%s = LOAD_SYMBOL %s" % (self.dst, self.name)
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitGlobalAddressLoad(self)
 
 # Assignment instruction.
 class Assign(TACInstr):

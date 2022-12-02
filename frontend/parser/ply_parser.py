@@ -50,10 +50,25 @@ def p_program_empty(p):
 def p_program(p):
     """
     program : program function
+        | program globaldeclaration
     """
     if p[2] is not NULL:
         p[1].children.append(p[2])
     p[0] = p[1]
+
+def p_globaldeclaration(p):
+    """
+    globaldeclaration : type Identifier Semi
+    """
+    p[0] = GlobalDeclaration(p[1], p[2])
+    # 声明语句
+
+def p_globaldeclaration_init(p):
+    """
+    globaldeclaration : type Identifier Assign expression Semi
+    """
+    p[0] = GlobalDeclaration(p[1], p[2], p[4])
+    # 定义语句
 
 def p_type(p):
     """
