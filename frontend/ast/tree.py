@@ -6,9 +6,9 @@ Modify this file if you want to add a new AST node.
 
 from __future__ import annotations
 
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Any, Generic, Optional, TypeVar, Union,List
 
-from frontend.type import INT, DecafType
+from frontend.type import INT, DecafType, ArrayType
 from utils import T, U
 
 from .node import NULL, BinaryOp, Node, UnaryOp
@@ -118,16 +118,18 @@ class Parameter(Node):
         self,
         var_t: TypeLiteral,
         ident: Identifier,
+        index: Optional[IndexList] = None
     ) -> None:
         super().__init__('parameter')
         self.var_t = var_t
         self.ident = ident
+        self.index = index or NULL
     
     def __getitem__(self, key: int) -> Node:
-        return (self.var_t, self.ident)[key]
+        return (self.var_t, self.ident, self.index)[key]
 
     def __len__(self) -> int:
-        return 2
+        return 3
     
     def accept(self, v: Visitor[T, U], ctx: T):
         return v.visitParameter(self, ctx)
@@ -447,6 +449,23 @@ class TypeLiteral(Node):
     def is_leaf(self):
         return True
 
+class TIntArray(TypeLiteral):
+    def __init__(self, slicing:Optional[List[int]] = None) -> None:
+        if slicing == None:
+            slicing = []
+        self.slicing = slicing
+        array_type = ArrayType(INT, slicing)
+        super().__init__("type_int_array", array_type)
+        # self.type = array_type
+
+    def __getitem__(self, key: int) -> Node:
+        raise _index_len_err(key, self)
+    
+    def __len__(self) -> int:
+        return 0
+    
+    def accept(self, v: Visitor[T, U], ctx: T) -> Optional[U]:
+        return v.visitArray(self, ctx)
 
 class TInt(TypeLiteral):
     "AST node of type `int`."
@@ -473,18 +492,27 @@ class IndexList(ListNode[Union[IntLiteral, Expression]]):
     def is_block(self) -> bool:
         return False  
 
+class InitList(ListNode[IntLiteral]):
+    def __init__(self, *children: IntLiteral) -> None:
+        super().__init__('initlist', list(children))
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitInitList(self, ctx)
+
+    def is_block(self) -> bool:
+        return False
+
 class Declaration(Node):
     """
     AST node of declaration.
     声明一个变量
     """
-
     def __init__(
         self,
         var_t: TypeLiteral,
         ident: Identifier,
         index: Optional[IndexList] = None,
-        init_expr: Optional[Expression] = None,
+        init_expr: Optional[Union[Expression, InitList]] = None,
     ) -> None:
         super().__init__("declaration")
         self.var_t = var_t
@@ -511,7 +539,7 @@ class GlobalDeclaration(Node):
         var_t: TypeLiteral,
         ident: Identifier,
         index: Optional[IndexList] = None,
-        init_expr: Optional[IntLiteral] = None,
+        init_expr: Optional[Union[IntLiteral, InitList]] = None,
     ) -> None:
         super().__init__("globaldeclaration")
         self.var_t = var_t

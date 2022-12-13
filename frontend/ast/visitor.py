@@ -78,6 +78,9 @@ class Visitor(Protocol[T, U]):  # type: ignore
     def visitIndexList(self, that: IndexList, ctx: T) -> Optional[Sequence[U]]:
         return self.visitOther(that, ctx)
 
+    def visitInitList(self, that: InitList, ctx: T) -> Optional[Sequence[U]]:
+        return self.visitOther(that, ctx)
+
     def visitGlobalDeclaration(self, that: GlobalDeclaration, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)
 
@@ -111,6 +114,8 @@ class Visitor(Protocol[T, U]):  # type: ignore
     def visitTInt(self, that: TInt, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)
 
+    def visitArray(self, that: TIntArray, ctx: T) -> Optional[U]:
+        return self.visitOther(that, ctx)
 
 class RecursiveVisitor(Visitor[T, U]):
     def visitOther(self, node: Node, ctx: T) -> Optional[Sequence[Optional[U]]]:

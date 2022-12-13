@@ -3,6 +3,8 @@ from __future__ import annotations
 from .builtin_type import INT
 from .type import DecafType
 
+from typing import List,Optional
+
 """
 Array type is represented in a recursive form.
 
@@ -16,10 +18,12 @@ Some examples:
 
 
 class ArrayType(DecafType):
-    def __init__(self, base: DecafType, length: int) -> None:
+    def __init__(self, base: DecafType, slicing:List[int]) -> None:
         super().__init__()
+        # 在这里我们初定length为数组的维度
         self.base = base
-        self.length = length
+        self.slicing = slicing
+        self.length = len(self.slicing)
 
     @property
     def indexed(self) -> DecafType:

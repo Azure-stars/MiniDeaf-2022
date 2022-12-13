@@ -91,7 +91,12 @@ class TACGen(Visitor[FuncVisitor, None]):
             else:
                 ident.setattr("val", symbol.temp)
         else:
-            ident.setattr("val", symbol.temp)
+            if symbol.isGlobal == False:
+                ident.setattr("val", symbol.temp)
+            else:
+                # 是全局数组，要读取其地址，而不是其值
+                ident.setattr('val', mv.visitGlobalAddressLoad(ident.value, mv.freshTemp()))
+                # pass
 
     def visitDeclaration(self, decl: Declaration, mv: FuncVisitor) -> None:
         """
@@ -109,9 +114,20 @@ class TACGen(Visitor[FuncVisitor, None]):
         elif isinstance(now_symbol, ArraySymbol):
             # 数组时要注意
             tot_len = now_symbol.calc_len()
-            # 获取总共需要的内存大小
+            # 获取总共需要的元素数目大小
             decl.setattr('val', mv.visitAlloc(tot_len, now_symbol.temp))
             # 此时没有初始化，或者当前step没有
+            if decl.init_expr != NULL:
+                if isinstance(decl.init_expr, InitList):
+                    # 用集合进行初始化
+                    # 赋予地址为now_symbol.temp
+                    # 赋予长度
+                    mv.visitParam(now_symbol.temp)
+                    mv.visitParam(mv.visitLoad(0))
+                    mv.visitParam(mv.visitLoad(tot_len))
+                    mv.visitCall(mv.getFuncLabel('fill_n'))
+                    for (id, val) in enumerate(decl.init_expr.children):   
+                        mv.visitGlobalOffsetStore(mv.visitLoad(val.value), now_symbol.temp, id * 4)
 
     def visitAssignment(self, expr: Assignment, mv: FuncVisitor) -> None:
         """

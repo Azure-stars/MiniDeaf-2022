@@ -45,7 +45,7 @@ class Typer(Visitor[ScopeStack, None]):
             parameter.accept(self, ctx)
 
     def visitExpressionList(self, expressionlist: ExpressionList, ctx: T) -> None:
-        for expression in expressionlist:
+        for expression in expressionlist.children:
             expression.accept(self, ctx)
 
     def visitBlock(self, block: Block, ctx: ScopeStack) -> None:
@@ -117,7 +117,7 @@ class Typer(Visitor[ScopeStack, None]):
             decl.init_expr.accept(self, ctx)
             if type(now_symbol) == VarSymbol and type(decl.init_expr) != IntLiteral:
                 raise DecafTypeMismatchError
-            if type(now_symbol) == ArraySymbol:
+            if type(now_symbol) == ArraySymbol and type(decl.init_expr) != InitList:
                 # 之后会修改，加上集合
                 raise DecafTypeMismatchError
             
@@ -125,16 +125,11 @@ class Typer(Visitor[ScopeStack, None]):
         # 检查类型是否对应
         # 此时右边的东西是一个表达式，需要仔细判断
         now_symbol = decl.getattr('symbol')
-        # if len(decl.index.children) == 0 and type(now_symbol) != VarSymbol:
-        #     raise DecafTypeMismatchError
-
-        # if len(decl.index.children) != 0 and type(now_symbol) != ArraySymbol:
-        #     raise DecafTypeMismatchError
         if decl.init_expr != NULL:
             # 只检查数组，数组的赋值比较特别 
             decl.init_expr.accept(self, ctx) 
-            if type(now_symbol) == ArraySymbol:
-                # 之后会修改，加上集合
+            if type(now_symbol) == ArraySymbol and type(decl.init_expr) != InitList:
+                # 需要为集合
                 raise DecafTypeMismatchError
             # 其余情况下
             if type(now_symbol) == VarSymbol:
@@ -152,22 +147,42 @@ class Typer(Visitor[ScopeStack, None]):
         fun_symbol = ctx.globalscope.get(call.ident.value)
         if isinstance(fun_symbol, FuncSymbol):
             call.ident.accept(self, ctx)
-            call.argument_list.accept(self, ctx)
+            # call.argument_list.accept(self, ctx)
+            for (id, arg) in enumerate(call.argument_list.children):
+                real_type = fun_symbol.para_type[id]
+                # 获取真实定义的参数type
+                if isinstance(real_type, TIntArray):
+                    if isinstance(arg, Identifier): 
+                        arg_symbol = arg.getattr('symbol')
+                        if isinstance(arg_symbol, ArraySymbol):
+                            arg_slicing = real_type.slicing
+                            pass_slicing = arg_symbol.index
+                            if len(arg_slicing) != len(pass_slicing):
+                                raise DecafBadFuncCallError(call.ident.value)
+                            for id in range(1, len(arg_slicing)):
+                                if arg_slicing[id] != pass_slicing[id]:
+                                    raise DecafBadFuncCallError
+                        # 若当前位置是数组，那么我们传入的参数一定是数组名
+                        else:
+                            # 检查长度维数是否一致
+                            raise DecafBadFuncCallError
+                    else:
+                        raise DecafBadFuncCallError
+                elif isinstance(real_type, TInt):
+                    if isinstance(arg, Identifier):
+                        arg_symbol = arg.getattr('symbol')
+                        if isinstance(arg_symbol, ArraySymbol):
+                        # 若当前位置是数组，那么我们传入的参数一定是数组名
+                            raise DecafBadFuncCallError
+                # 检查参数列表的时候应当注意，需要每一个位置的类型也一样
         else:
             raise DecafBadFuncCallError(call.ident.value)
         # call总是返回int
 
     def visitParameter(self, para: Parameter, ctx: ScopeStack) -> None:
         # 相当于声明变量，需要加入符号表并且新建节点
-        # temp = ctx.findConflict(para.ident.value)
-        # if temp != None:
-        #     raise DecafDeclConflictError(para.ident.value)
-        # new_symbol = VarSymbol(para.ident.value, para.var_t.type)
-        # ctx.declare(new_symbol)
-        # para.setattr("symbol", new_symbol)
-        now_symbol = para.getattr('symbol')
-        if type(now_symbol) != VarSymbol:
-            raise DecafTypeMismatchError
+        return
+        # 没啥好检查的
 
     def visitAssignment(self, expr: Assignment, ctx: ScopeStack) -> None:
         """

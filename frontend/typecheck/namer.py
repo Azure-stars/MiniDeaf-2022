@@ -79,13 +79,19 @@ class Namer(Visitor[ScopeStack, None]):
 
     def visitParameterList(self, parameterlist: ParameterList, ctx: ScopeStack) -> None:
         # 逐个检查参数
-        for parameter in parameterlist:
+        for parameter in parameterlist.children:
             parameter.accept(self, ctx)
 
     def visitExpressionList(self, expressionlist: ExpressionList, ctx: ScopeStack) -> None:
         # 检查声明中的实参
-        for expression in expressionlist:
+        for expression in expressionlist.children:
             expression.accept(self, ctx)
+
+    def visitInitList(self, init: InitList, ctx: ScopeStack) -> None:
+        for child in init.children:
+            child.accept(self, ctx)
+            if child.value <= 0:
+                raise DecafBadArraySizeError
 
     def visitBlock(self, block: Block, ctx: ScopeStack) -> None:
         new_score = Scope(ScopeKind.LOCAL)
@@ -155,16 +161,26 @@ class Namer(Visitor[ScopeStack, None]):
             now_symbol = VarSymbol(decl.ident.value, decl.var_t.type,isGlobal=True)
         else:
             # new_symbol = VarSymbol(decl.ident.value, decl.var_t.type, decl.index.children)
+            decl.index.accept(self, ctx)
             index_size = []
             for size in decl.index.children:
-                if size.value == 0:
+                # 定义的时候不支持变长数组
+                # 此时较为暴力的认为不支持运算
+                if isinstance(size, IntLiteral) == False:
+                    raise DecafBadArraySizeError
+                if size.value <= 0:
                     raise DecafBadArraySizeError
                 index_size.append(size.value)
+            
             now_symbol = ArraySymbol(decl.ident.value, decl.var_t.type, index=index_size, isGlobal=True)
             # 插入数组符号  
         if decl.init_expr != NULL:
             decl.init_expr.accept(self, ctx)
-            now_symbol.setInitValue(decl.init_expr.value)
+            if isinstance(decl.init_expr, InitList):
+                for child in decl.init_expr.children:
+                    now_symbol.setInitValue(child.value)
+            elif isinstance(decl.init_expr, IntLiteral):
+                now_symbol.setInitValue(decl.init_expr.value)
             # 标记其为已经定义
         ctx.globalscope.declare(now_symbol)
         # print(now_symbol.isGlobal)
@@ -186,9 +202,12 @@ class Namer(Visitor[ScopeStack, None]):
             new_symbol = VarSymbol(decl.ident.value, decl.var_t.type)
         else:
             # new_symbol = VarSymbol(decl.ident.value, decl.var_t.type, decl.index.children)
+            decl.index.accept(self, ctx)
             index_size = []
             for size in decl.index.children:
-                if size.value == 0:
+                if isinstance(size, IntLiteral) == False:
+                    raise DecafBadArraySizeError
+                if size.value <= 0:
                     raise DecafBadArraySizeError
                 index_size.append(size.value)
             new_symbol = ArraySymbol(decl.ident.value, decl.var_t.type, index=index_size)
@@ -226,7 +245,13 @@ class Namer(Visitor[ScopeStack, None]):
         temp = ctx.findConflict(para.ident.value)
         if temp != None:
             raise DecafDeclConflictError(para.ident.value)
-        new_symbol = VarSymbol(para.ident.value, para.var_t.type)
+        if para.index != NULL:
+            symbol_index = []
+            for size in para.index.children:
+                symbol_index.append(size.value)
+            new_symbol = ArraySymbol(para.ident.value, para.var_t.type, index=symbol_index)
+        else:
+            new_symbol = VarSymbol(para.ident.value, para.var_t.type)
         ctx.declare(new_symbol)
         para.setattr("symbol", new_symbol)
 
@@ -274,10 +299,6 @@ class Namer(Visitor[ScopeStack, None]):
         temp = ctx.lookup(ident.value)
         if temp == NULL:
             raise DecafUndefinedVarError(ident.value)
-        # if type(temp) != VarSymbol:
-        #     # 检查类型
-        #       似乎不在这里干
-        #     raise DecafTypeMismatchError
         ident.setattr("symbol",temp)
         # pass
 

@@ -42,6 +42,14 @@ class RiscvAsmEmitter(AsmEmitter):
                     self.printer.buffer += (symbol.name + ':') + '\n'
                     # 输出具体值
                     self.printer.println('.word ' + str(symbol.initValue))
+            elif isinstance(symbol, ArraySymbol):
+                if symbol.isGlobal and symbol.initValue != None:
+                    self.printer.buffer += ('.global ' + symbol.name) + '\n'
+                    self.printer.buffer += (symbol.name + ':') + '\n'
+                    for val in symbol.initValue:
+                        self.printer.println('.word ' + str(val))
+                    for _ in range(symbol.calc_len() - len(symbol.initValue)):
+                        self.printer.println('.word 0')
         self.printer.println('.bss')
 
         for symbol in ctx.globalscope.symbols.values():
@@ -54,10 +62,11 @@ class RiscvAsmEmitter(AsmEmitter):
                     # 输出具体值
                     self.printer.println('.space 4')
             elif isinstance(symbol, ArraySymbol):
-                if symbol.isGlobal:
+                if symbol.isGlobal  and symbol.initValue == None:
                     self.printer.buffer += ('.global ' + symbol.name) + '\n'
                     self.printer.buffer += (symbol.name + ':') + '\n'
-                    self.printer.println('.zero ' + str(symbol.calc_len() * 4))
+                    self.printer.println('.zero ' + str(symbol.calc_len() * 4)) 
+
         self.printer.println(".text")
         self.printer.println(".global main")
         self.printer.println("")

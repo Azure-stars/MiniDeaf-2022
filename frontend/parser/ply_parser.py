@@ -74,13 +74,44 @@ def p_globaldeclaration_array(p):
     """
     globaldeclaration : type Identifier indexlist Semi
     """
+    slicing = []
+    for child in p[3].children:
+        # 此时必定保证为实数
+        slicing.append(child.value)
+    p[1] = TIntArray(slicing)
     p[0] = GlobalDeclaration(var_t=p[1], ident=p[2], index=p[3])
 
 def p_globaldeclaration_array_init(p):
     """
-    globaldeclaration : type Identifier indexlist Assign expression Semi
+    globaldeclaration : type Identifier indexlist Assign LBrace set RBrace Semi
     """
-    p[0] = GlobalDeclaration(var_t=p[1], ident=p[2], index=p[3], init_expr=p[5])
+    slicing = []
+    for child in p[3].children:
+        # 此时必定保证为实数
+        slicing.append(child.value)
+    p[1] = TIntArray(slicing)
+    p[0] = GlobalDeclaration(var_t=p[1], ident=p[2], index=p[3], init_expr=p[6])
+
+def p_array_set_empty(p):
+    """
+    set : empty
+    """
+    p[0] = InitList()
+
+def p_array_set_single(p):
+    """
+    set : Integer
+    """
+    p[0] = InitList()
+    p[0].children.append(p[1])
+
+def p_array_set(p):
+    """
+    set : set Comma Integer
+    """
+    p[0] = p[1]
+    p[0].children.append(p[3])
+    
 
 def p_type(p):
     """
@@ -131,6 +162,41 @@ def p_parameter(p):
     parameter : type Identifier
     """
     p[0] = Parameter(p[1], p[2])
+
+def p_parameter_array(p):
+    """
+    parameter : type Identifier indexlist
+    """
+    # 此时不用存储数组每一位
+    slicing = []
+    for child in p[3].children:
+        # 此时必定保证为实数
+        slicing.append(child.value)
+    p[1] = TIntArray(slicing)
+    p[0] = Parameter(p[1], p[2], p[3])
+
+def p_parameter_array_first_empty(p):
+    """
+    parameter : type Identifier LMidBrace RMidBrace
+    """
+    temp = IndexList()
+    p[1] = TIntArray([1])
+    # 长度为1的数组
+    temp.children.append(IntLiteral(1))
+    p[0] = Parameter(p[1], p[2], temp)
+
+def p_parameter_array_empty(p):
+    """
+    parameter : type Identifier LMidBrace RMidBrace indexlist
+    """
+    p[5].children.insert(0, IntLiteral(1))
+    # 标记前面第一维为空
+    slicing = []
+    for child in p[3].children:
+        # 此时必定保证为实数
+        slicing.append(child.value)
+    p[1] = TIntArray(slicing)
+    p[0] = Parameter(p[1], p[2], p[5])
 
 def p_expressionlist_empty(p):
     """
@@ -352,13 +418,23 @@ def p_declaration_array(p):
     """
     declaration : type Identifier indexlist
     """
+    slicing = []
+    for child in p[3].children:
+        # 此时必定保证为实数
+        slicing.append(child.value)
+    p[1] = TIntArray(slicing)
     p[0] = Declaration(var_t=p[1], ident=p[2], index=p[3])
 
 def p_declaration_array_init(p):
     """
-    declaration : type Identifier indexlist Assign expression
+    declaration : type Identifier indexlist Assign LBrace set RBrace
     """
-    p[0] = Declaration(var_t=p[1], ident=p[2], index=p[3], init_expr=p[5])
+    slicing = []
+    for child in p[3].children:
+        # 此时必定保证为实数
+        slicing.append(child.value)
+    p[1] = TIntArray(slicing)
+    p[0] = Declaration(var_t=p[1], ident=p[2], index=p[3], init_expr=p[6])
 
 def p_indexlist(p):
     """
@@ -370,9 +446,10 @@ def p_indexlist(p):
 
 def p_indexlist_null(p):
     """
-    indexlist : empty
+    indexlist : LMidBrace Integer RMidBrace
     """
     p[0] = IndexList()
+    p[0].children.append(p[2])
 
 def p_expression_precedence(p):
     """

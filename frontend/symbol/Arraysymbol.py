@@ -15,14 +15,17 @@ class ArraySymbol(Symbol):
         self.temp: Temp = None
         self.isGlobal = isGlobal
         self.index = index
-        self.initValue : Optional[int] = None
+        self.initValue : Optional[List[int]] = None
 
     def __str__(self) -> str:
         return "variable %s : %s" % (self.name, str(self.type))
 
     # To set the initial value of a variable symbol (used for global variable).
-    def setInitValue(self, value: int) -> None:
-        self.initValue = value
+    def setInitValue(self,value: int) -> None:
+        if self.initValue == None:
+            self.initValue = [value]
+        else:
+            self.initValue.append(value)
 
     def calc_len(self) -> int:
         tot = 0
