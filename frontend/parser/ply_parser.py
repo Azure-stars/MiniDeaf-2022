@@ -60,15 +60,27 @@ def p_globaldeclaration(p):
     """
     globaldeclaration : type Identifier Semi
     """
-    p[0] = GlobalDeclaration(p[1], p[2])
+    p[0] = GlobalDeclaration(var_t=p[1],ident=p[2])
     # 声明语句
 
 def p_globaldeclaration_init(p):
     """
     globaldeclaration : type Identifier Assign expression Semi
     """
-    p[0] = GlobalDeclaration(p[1], p[2], p[4])
+    p[0] = GlobalDeclaration(var_t=p[1],ident=p[2], init_expr=p[4])
     # 定义语句
+
+def p_globaldeclaration_array(p):
+    """
+    globaldeclaration : type Identifier indexlist Semi
+    """
+    p[0] = GlobalDeclaration(var_t=p[1], ident=p[2], index=p[3])
+
+def p_globaldeclaration_array_init(p):
+    """
+    globaldeclaration : type Identifier indexlist Assign expression Semi
+    """
+    p[0] = GlobalDeclaration(var_t=p[1], ident=p[2], index=p[3], init_expr=p[5])
 
 def p_type(p):
     """
@@ -326,16 +338,41 @@ def p_declaration(p):
     """
     declaration : type Identifier
     """
-    p[0] = Declaration(p[1], p[2])
+    p[0] = Declaration( var_t=p[1], ident=p[2])
     # 声明语句
 
 def p_declaration_init(p):
     """
     declaration : type Identifier Assign expression
     """
-    p[0] = Declaration(p[1], p[2], p[4])
+    p[0] = Declaration(var_t=p[1],ident=p[2], init_expr=p[4])
     # 定义语句
 
+def p_declaration_array(p):
+    """
+    declaration : type Identifier indexlist
+    """
+    p[0] = Declaration(var_t=p[1], ident=p[2], index=p[3])
+
+def p_declaration_array_init(p):
+    """
+    declaration : type Identifier indexlist Assign expression
+    """
+    p[0] = Declaration(var_t=p[1], ident=p[2], index=p[3], init_expr=p[5])
+
+def p_indexlist(p):
+    """
+    indexlist : indexlist LMidBrace Integer RMidBrace
+    """
+    p[0] = p[1]
+    if(p[3] != NULL):
+        p[0].children.append(p[3])
+
+def p_indexlist_null(p):
+    """
+    indexlist : empty
+    """
+    p[0] = IndexList()
 
 def p_expression_precedence(p):
     """
@@ -364,6 +401,21 @@ def p_postfix(p):
     """
     p[0] = Call(p[1], p[3])
  
+def p_postfix_array(p):
+    """
+    postfix : postfix_array LMidBrace expression RMidBrace
+    postfix_array : postfix_array LMidBrace expression RMidBrace
+    """
+    p[0] = p[1]
+    if p[3] is not NULL:
+        p[0].index.children.append(p[3])
+
+def p_postfix_array_empty(p):
+    """
+    postfix_array : primary
+    """
+    p[0] = IndexExpr(p[1], IndexList())
+
 
 def p_unary_expression(p):
     """
@@ -377,7 +429,7 @@ def p_unary_expression(p):
 
 def p_binary_expression(p):
     """
-    assignment : Identifier Assign expression
+    assignment : postfix Assign expression
     logical_or : logical_or Or logical_and
     logical_and : logical_and And bit_or
     bit_or : bit_or BitOr xor

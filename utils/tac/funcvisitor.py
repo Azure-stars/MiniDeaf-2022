@@ -44,6 +44,10 @@ class FuncVisitor:
         self.func.add(GlobalAddressLoad(name, dst))
         return dst
 
+    def visitAlloc(self, size: int, dst: Temp) -> Temp:
+        self.func.add(Alloc(size, dst))
+        return dst
+
     def visitGlobalOffsetStore(self, src:Temp, base:Temp, offset: int) -> None:
         self.func.add(GlobalOffsetStore(src, base, offset))
 

@@ -17,7 +17,9 @@ class InstrKind(Enum):
     # param for function
     PARAM = auto()
 
-    CALL = auto
+    CALL = auto()
+
+    ALLOC = auto()
 
 
 # Kinds of unary operations.

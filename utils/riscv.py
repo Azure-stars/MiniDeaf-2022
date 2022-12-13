@@ -179,6 +179,14 @@ class Riscv:
             # 不需要提供这个，需要我们单独处理放入到哪个寄存器中
             return "param " + str(self.val)
 
+    class Alloc(TACInstr):
+        def __init__(self, dst: Temp, size: int) -> None:
+            super().__init__(InstrKind.ALLOC,[dst], [], None)
+            self.size = size
+        
+        def __str__(self) -> str:
+            return self.dsts[0] + ' = alloc ' + str(self.size) 
+
     class Jump(TACInstr):
         def __init__(self, target: Label) -> None:
             super().__init__(InstrKind.JMP, [], [], target)

@@ -31,6 +31,10 @@ class SubroutineEmitter(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def AllocArrayInStack(self, dst:Reg, src: Temp, size: int):
+        raise NotImplementedError
+
+    @abstractmethod
     def emitLoadFromStack(self, dst: Reg, src: Temp):
         raise NotImplementedError
 

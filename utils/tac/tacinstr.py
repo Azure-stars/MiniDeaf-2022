@@ -95,6 +95,18 @@ class GlobalAddressLoad(TACInstr):
     def accept(self, v: TACVisitor) -> None:
         v.visitGlobalAddressLoad(self)
 
+class Alloc(TACInstr):
+    def __init__(self, size: int, dst: Temp) -> None:
+        super().__init__(InstrKind.SEQ, [dst], [], None)
+        self.size = size
+        self.dst = dst
+
+    def __str__(self) -> str:
+        return "%s = ALLOC %d" % (self.dst, self.size)
+
+    def accept(self, v: TACVisitor) -> None:
+        v.visitAlloc(self)
+
 # Assignment instruction.
 class Assign(TACInstr):
     def __init__(self, dst: Temp, src: Temp) -> None:
@@ -230,7 +242,7 @@ class Param(TACInstr):
 
     def accept(self, v: TACVisitor) -> None:
         v.visitParam(self)
-
+        
 # Annotation (used for debugging).
 class Memo(TACInstr):
     def __init__(self, msg: str) -> None:

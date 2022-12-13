@@ -379,166 +379,6 @@ class Block(Statement, ListNode[Union["Statement", "Declaration"]]):
     def is_block(self) -> bool:
         return True
 
-class GlobalDeclaration(Node):
-    """
-    AST node that represents for the global variable
-    """
-    # 肯定写在declaration旁边啊（喜
-    def __init__(
-        self,
-        var_t: TypeLiteral,
-        ident: Identifier,
-        init_expr: Optional[IntLiteral] = None,
-    ) -> None:
-        super().__init__("globaldeclaration")
-        self.var_t = var_t
-        self.ident = ident
-
-        self.init_expr = init_expr or NULL
-
-    def __getitem__(self, key: int) -> Node:
-        return (self.var_t, self.ident, self.init_expr)[key]
-
-    def __len__(self) -> int:
-        return 3
-
-    def accept(self, v: Visitor[T, U], ctx: T):
-        return v.visitGlobalDeclaration(self, ctx)
-
-
-class Declaration(Node):
-    """
-    AST node of declaration.
-    声明一个变量
-    """
-
-    def __init__(
-        self,
-        var_t: TypeLiteral,
-        ident: Identifier,
-        init_expr: Optional[Expression] = None,
-    ) -> None:
-        super().__init__("declaration")
-        self.var_t = var_t
-        self.ident = ident
-        self.init_expr = init_expr or NULL
-        
-
-    def __getitem__(self, key: int) -> Node:
-        return (self.var_t, self.ident, self.init_expr)[key]
-
-    def __len__(self) -> int:
-        return 3
-
-    def accept(self, v: Visitor[T, U], ctx: T):
-        return v.visitDeclaration(self, ctx)
-
-
-
-class Unary(Expression):
-    """
-    AST node of unary expression.
-    Note that the operation type (like negative) is not among its children.
-    一元表达式
-    不包含负数
-    """
-
-    def __init__(self, op: UnaryOp, operand: Expression) -> None:
-        super().__init__(f"unary({op.value})")
-        self.op = op
-        self.operand = operand
-
-    def __getitem__(self, key: int) -> Node:
-        return (self.operand,)[key]
-
-    def __len__(self) -> int:
-        return 1
-
-    def accept(self, v: Visitor[T, U], ctx: T):
-        return v.visitUnary(self, ctx)
-
-    def __str__(self) -> str:
-        return "{}({})".format(
-            self.op.value,
-            self.operand,
-        )
-
-
-class Binary(Expression):
-    """
-    AST node of binary expression.
-    Note that the operation type (like plus or subtract) is not among its children. 
-    二元表达式
-    """
-
-    def __init__(self, op: BinaryOp, lhs: Expression, rhs: Expression) -> None:
-        super().__init__(f"binary({op.value})")
-        self.lhs = lhs
-        self.op = op
-        self.rhs = rhs
-
-    def __getitem__(self, key: int) -> Node:
-        return (self.lhs, self.rhs)[key]
-
-    def __len__(self) -> int:
-        return 2
-
-    def accept(self, v: Visitor[T, U], ctx: T):
-        return v.visitBinary(self, ctx)
-
-    def __str__(self) -> str:
-        return "({}){}({})".format(
-            self.lhs,
-            self.op.value,
-            self.rhs,
-        )
-
-
-class Assignment(Binary):
-    """
-    AST node of assignment expression.
-    It's actually a kind of binary expression, but it'll make things easier if we use another accept method to handle it.
-    """
-
-    def __init__(self, lhs: Identifier, rhs: Expression) -> None:
-        super().__init__(BinaryOp.Assign, lhs, rhs)
-
-    def accept(self, v: Visitor[T, U], ctx: T):
-        return v.visitAssignment(self, ctx)
-
-
-class ConditionExpression(Expression):
-    """
-    AST node of condition expression (`?:`).
-    """
-
-    def __init__(
-        self, cond: Expression, then: Expression, otherwise: Expression
-    ) -> None:
-        super().__init__("cond_expr")
-        self.cond = cond
-        self.then = then
-        self.otherwise = otherwise
-
-    def __getitem__(self, key: Union[int, str]) -> Node:
-        if isinstance(key, int):
-            return (self.cond, self.then, self.otherwise)[key]
-        return self.__dict__[key]
-
-    def __len__(self) -> int:
-        return 3
-
-    def accept(self, v: Visitor[T, U], ctx: T):
-        return v.visitCondExpr(self, ctx)
-
-    def __str__(self) -> str:
-        return "({})?({}):({})".format(
-            self.cond,
-            self.then,
-            self.otherwise,
-        )
-
-
 class Identifier(Expression):
     """
     AST node of identifier "expression".
@@ -622,3 +462,191 @@ class TInt(TypeLiteral):
 
     def accept(self, v: Visitor[T, U], ctx: T):
         return v.visitTInt(self, ctx)
+
+class IndexList(ListNode[Union[IntLiteral, Expression]]):
+    def __init__(self, *children: Union[IntLiteral, Expression]) -> None:
+        super().__init__('indexlist', list(children))
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitIndexList(self, ctx)     
+
+    def is_block(self) -> bool:
+        return False  
+
+class Declaration(Node):
+    """
+    AST node of declaration.
+    声明一个变量
+    """
+
+    def __init__(
+        self,
+        var_t: TypeLiteral,
+        ident: Identifier,
+        index: Optional[IndexList] = None,
+        init_expr: Optional[Expression] = None,
+    ) -> None:
+        super().__init__("declaration")
+        self.var_t = var_t
+        self.ident = ident
+        self.init_expr = init_expr or NULL
+        self.index = index or IndexList()
+    def __getitem__(self, key: int) -> Node:
+        return (self.var_t, self.ident, self.index, self.init_expr)[key]
+
+    def __len__(self) -> int:
+        return 4
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitDeclaration(self, ctx)
+
+
+class GlobalDeclaration(Node):
+    """
+    AST node that represents for the global variable
+    """
+    # 肯定写在declaration旁边啊（喜
+    def __init__(
+        self,
+        var_t: TypeLiteral,
+        ident: Identifier,
+        index: Optional[IndexList] = None,
+        init_expr: Optional[IntLiteral] = None,
+    ) -> None:
+        super().__init__("globaldeclaration")
+        self.var_t = var_t
+        self.ident = ident
+        self.index = index or IndexList()
+        self.init_expr = init_expr or NULL
+        # 龟龟为常量
+
+    def __getitem__(self, key: int) -> Node:
+        return (self.var_t, self.ident, self.index, self.init_expr)[key]
+
+    def __len__(self) -> int:
+        return 4
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitGlobalDeclaration(self, ctx)
+
+class IndexExpr(Expression):
+    """
+    AST node for array index
+    """
+    def __init__(self, base:Identifier, index: IndexList ) -> None:
+        super().__init__('indexExpr')
+        self.base = base
+        self.index = index
+
+    def __getitem__(self, key: int) -> Node:
+        return (self.base, self.index)[key]
+
+    def __len__(self) -> int:
+        return 2
+    
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitIndexExpr(self, ctx)
+
+
+class Unary(Expression):
+    """
+    AST node of unary expression.
+    Note that the operation type (like negative) is not among its children.
+    一元表达式
+    不包含负数
+    """
+
+    def __init__(self, op: UnaryOp, operand: Expression) -> None:
+        super().__init__(f"unary({op.value})")
+        self.op = op
+        self.operand = operand
+
+    def __getitem__(self, key: int) -> Node:
+        return (self.operand,)[key]
+
+    def __len__(self) -> int:
+        return 1
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitUnary(self, ctx)
+
+    def __str__(self) -> str:
+        return "{}({})".format(
+            self.op.value,
+            self.operand,
+        )
+
+
+class Binary(Expression):
+    """
+    AST node of binary expression.
+    Note that the operation type (like plus or subtract) is not among its children. 
+    二元表达式
+    """
+
+    def __init__(self, op: BinaryOp, lhs: Expression, rhs: Expression) -> None:
+        super().__init__(f"binary({op.value})")
+        self.lhs = lhs
+        self.op = op
+        self.rhs = rhs
+
+    def __getitem__(self, key: int) -> Node:
+        return (self.lhs, self.rhs)[key]
+
+    def __len__(self) -> int:
+        return 2
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitBinary(self, ctx)
+
+    def __str__(self) -> str:
+        return "({}){}({})".format(
+            self.lhs,
+            self.op.value,
+            self.rhs,
+        )
+
+class Assignment(Binary):
+    """
+    AST node of assignment expression.
+    It's actually a kind of binary expression, but it'll make things easier if we use another accept method to handle it.
+    """
+
+    def __init__(self, lhs: Union[Identifier, IndexExpr], rhs: Expression) -> None:
+        super().__init__(BinaryOp.Assign, lhs, rhs)
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitAssignment(self, ctx)
+
+
+class ConditionExpression(Expression):
+    """
+    AST node of condition expression (`?:`).
+    """
+
+    def __init__(
+        self, cond: Expression, then: Expression, otherwise: Expression
+    ) -> None:
+        super().__init__("cond_expr")
+        self.cond = cond
+        self.then = then
+        self.otherwise = otherwise
+
+    def __getitem__(self, key: Union[int, str]) -> Node:
+        if isinstance(key, int):
+            return (self.cond, self.then, self.otherwise)[key]
+        return self.__dict__[key]
+
+    def __len__(self) -> int:
+        return 3
+
+    def accept(self, v: Visitor[T, U], ctx: T):
+        return v.visitCondExpr(self, ctx)
+
+    def __str__(self) -> str:
+        return "({})?({}):({})".format(
+            self.cond,
+            self.then,
+            self.otherwise,
+        )
+

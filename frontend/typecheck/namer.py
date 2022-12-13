@@ -8,6 +8,7 @@ from frontend.scope.scopestack import ScopeStack
 from frontend.symbol.funcsymbol import FuncSymbol
 from frontend.symbol.symbol import Symbol
 from frontend.symbol.varsymbol import VarSymbol
+from frontend.symbol.Arraysymbol import ArraySymbol
 from frontend.type.array import ArrayType
 from frontend.type.type import DecafType
 from utils.error import *
@@ -66,7 +67,7 @@ class Namer(Visitor[ScopeStack, None]):
             new_symbol.addParaType(param.var_t)
         func.parameterlist.accept(self, ctx)
         if func.body != NULL:
-            # 利用scope是否为空来判断是否为声明
+            # 利用函数体是否为空来判断是否为声明
             new_symbol.scope = new_score
             # 覆盖原有符号，将函数设置为定义，注意需要在全局的符号表中进行检验
         ctx.globalscope.declare(new_symbol)
@@ -150,8 +151,17 @@ class Namer(Visitor[ScopeStack, None]):
             # 重复定义，必定为错误
             # 不允许同时有声明与定义
             raise DecafGlobalVarDefinedTwiceError(decl.ident.value)
-
-        now_symbol = VarSymbol(decl.ident.value, decl.var_t.type, True)
+        if len(decl.index.children) == 0:
+            now_symbol = VarSymbol(decl.ident.value, decl.var_t.type,isGlobal=True)
+        else:
+            # new_symbol = VarSymbol(decl.ident.value, decl.var_t.type, decl.index.children)
+            index_size = []
+            for size in decl.index.children:
+                if size.value == 0:
+                    raise DecafBadArraySizeError
+                index_size.append(size.value)
+            now_symbol = ArraySymbol(decl.ident.value, decl.var_t.type, index=index_size, isGlobal=True)
+            # 插入数组符号  
         if decl.init_expr != NULL:
             decl.init_expr.accept(self, ctx)
             now_symbol.setInitValue(decl.init_expr.value)
@@ -159,7 +169,6 @@ class Namer(Visitor[ScopeStack, None]):
         ctx.globalscope.declare(now_symbol)
         # print(now_symbol.isGlobal)
         decl.setattr("symbol", now_symbol)
-
 
     def visitDeclaration(self, decl: Declaration, ctx: ScopeStack) -> None:
         """
@@ -172,7 +181,18 @@ class Namer(Visitor[ScopeStack, None]):
         # 判断是否重名
         if temp != None:
             raise DecafGlobalVarDefinedTwiceError(decl.ident.value)
-        new_symbol = VarSymbol(decl.ident.value, decl.var_t.type)
+        # 索引部分不用递归检查，但是要根据是否为空，判断是数组还是变量
+        if len(decl.index.children) == 0:
+            new_symbol = VarSymbol(decl.ident.value, decl.var_t.type)
+        else:
+            # new_symbol = VarSymbol(decl.ident.value, decl.var_t.type, decl.index.children)
+            index_size = []
+            for size in decl.index.children:
+                if size.value == 0:
+                    raise DecafBadArraySizeError
+                index_size.append(size.value)
+            new_symbol = ArraySymbol(decl.ident.value, decl.var_t.type, index=index_size)
+            # 插入数组符号
         ctx.declare(new_symbol)
         decl.setattr("symbol", new_symbol)
         if decl.init_expr != NULL:
@@ -225,6 +245,18 @@ class Namer(Visitor[ScopeStack, None]):
         expr.lhs.accept(self, ctx)
         expr.rhs.accept(self, ctx)
 
+    def visitIndexList(self, indexlist: IndexList, ctx: ScopeStack) -> None:
+        for child in indexlist.children:
+            child.accept(self, ctx)
+
+    def visitIndexExpr(self, expr: IndexExpr, ctx: ScopeStack) -> None:
+        now_symbol = ctx.lookup(expr.base.value)
+        if now_symbol == NULL:
+            raise DecafUndefinedVarError(expr.base.value)
+        for child in expr.index.children:
+            child.accept(self, ctx)
+        expr.setattr('symbol', now_symbol)
+
     def visitCondExpr(self, expr: ConditionExpression, ctx: ScopeStack) -> None:
         """
         1. Refer to the implementation of visitBinary.
@@ -242,6 +274,10 @@ class Namer(Visitor[ScopeStack, None]):
         temp = ctx.lookup(ident.value)
         if temp == NULL:
             raise DecafUndefinedVarError(ident.value)
+        # if type(temp) != VarSymbol:
+        #     # 检查类型
+        #       似乎不在这里干
+        #     raise DecafTypeMismatchError
         ident.setattr("symbol",temp)
         # pass
 

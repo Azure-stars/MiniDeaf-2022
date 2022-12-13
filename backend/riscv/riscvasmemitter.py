@@ -8,6 +8,7 @@ from utils.tac.tacinstr import *
 from utils.tac.tacvisitor import TACVisitor
 
 from frontend.symbol.varsymbol import VarSymbol
+from frontend.symbol.Arraysymbol import ArraySymbol
 from frontend.typecheck.namer import ScopeStack
 
 from ..subroutineemitter import SubroutineEmitter
@@ -52,7 +53,11 @@ class RiscvAsmEmitter(AsmEmitter):
                     self.printer.buffer += (symbol.name + ':') + '\n'
                     # 输出具体值
                     self.printer.println('.space 4')
-
+            elif isinstance(symbol, ArraySymbol):
+                if symbol.isGlobal:
+                    self.printer.buffer += ('.global ' + symbol.name) + '\n'
+                    self.printer.buffer += (symbol.name + ':') + '\n'
+                    self.printer.println('.zero ' + str(symbol.calc_len() * 4))
         self.printer.println(".text")
         self.printer.println(".global main")
         self.printer.println("")
@@ -85,8 +90,6 @@ class RiscvAsmEmitter(AsmEmitter):
 
         # in step11, you need to think about how to deal with globalTemp in almost all the visit functions. 
         def visitReturn(self, instr: Return) -> None:
-            # print(instr.value)
-            # print(instr)
             if instr.value is not None:
                 self.seq.append(Riscv.Move(Riscv.A0, instr.value))
             else:
@@ -145,26 +148,20 @@ class RiscvAsmEmitter(AsmEmitter):
         def visitGlobalOffsetStore(self, instr: GlobalOffsetStore) -> None:
             self.seq.append(Riscv.GlobalOffsetStore(instr.srcs[1], instr.srcs[0], instr.offset))
 
-
         # in step9, you need to think about how to pass the parameters and how to store and restore callerSave regs
 
         # in step11, you need to think about how to store the array 
 
         def visitParam(self, instr: Param) -> None:
-            # 这里的传参很关键啊xdm
-            # 要不要先把里面的值清空呢
-            # 肯定要啊，这里很关键xdm
-            # 专门开一个语句，在后端处理
             self.seq.append(Riscv.Param(instr.value))
-            # 否则塞栈帧
-            # 直接让栈帧的sp往下移动，然后之后回收就好了，喜
-            # 感觉得让这个语句也在后端处理xs
-            # 应该得去后端nnd
-            # 摆烂！
+
         def visitCall(self, instr: Call) -> None:
             # 塞寄存器在后面进行，这里就是给个样子就好了
             self.seq.append(Riscv.Call(instr.label))
             self.seq.append(Riscv.Move(instr.value, Riscv.A0))
+
+        def visitAlloc(self, instr: Alloc) -> None:
+            self.seq.append(Riscv.Alloc(instr.dst, instr.size))
 
         def visitFunction(self, instr:Mark) -> None:
             # 需要
@@ -217,7 +214,6 @@ class RiscvSubroutineEmitter(SubroutineEmitter):
     def emitStoreToStack(self, src: Reg) -> None:
         if src.temp.index not in self.offsets:
             # 没有记录在栈帧上
-
             self.offsets[src.temp.index] = self.nextLocalOffset
             # 新开一个位置
             self.nextLocalOffset += 4
@@ -226,6 +222,13 @@ class RiscvSubroutineEmitter(SubroutineEmitter):
         )
         # 每一个寄存器有他们各自独立的位置，好耶，这下子确定了
 
+    def AllocArrayInStack(self, dst:Reg, src: Temp, size: int):
+        if src.index not in self.offsets:
+            self.offsets[src.index] = self.nextLocalOffset
+            self.nextLocalOffset += 4 * size + 4
+            self.buf.append(Riscv.Add(dst, Riscv.SP, self.offsets[src.index] + 4))
+            self.buf.append(Riscv.NativeStoreWord(dst, Riscv.SP, self.offsets[src.index]))
+        
     def emitMoveReg(self, dst: Reg, src: Temp):
         self.buf.append(Riscv.Move(dst, src))
 

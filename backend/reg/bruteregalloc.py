@@ -116,7 +116,6 @@ class BruteRegAlloc(RegAlloc):
                 # 已经是真实寄存器
                 srcRegs.append(temp)
             else:
-
                 srcRegs.append(self.allocRegFor(temp, True, loc.liveIn, subEmitter))
         
         for i in range(len(instr.dsts)):
@@ -193,6 +192,8 @@ class BruteRegAlloc(RegAlloc):
             # 先拿个列表存起来
             # 之后倒着插进栈帧里面
             # 开栈帧
+        elif instr.kind == InstrKind.ALLOC:
+            subEmitter.AllocArrayInStack(dstRegs[0], instr.dsts[0], instr.size) 
         else:
             subEmitter.emitNative(instr.toNative(dstRegs, srcRegs))
         # 把tac代码转化为riscv代码

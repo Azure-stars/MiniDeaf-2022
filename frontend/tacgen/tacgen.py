@@ -6,6 +6,7 @@ from frontend.ast import node
 from frontend.ast.tree import *
 from frontend.ast.visitor import Visitor
 from frontend.symbol.varsymbol import VarSymbol
+from frontend.symbol.Arraysymbol import ArraySymbol
 from frontend.typecheck.namer import ScopeStack
 from frontend.type.array import ArrayType
 from utils.tac import tacop
@@ -100,10 +101,17 @@ class TACGen(Visitor[FuncVisitor, None]):
         """
         now_symbol = decl.getattr("symbol")
         now_symbol.temp = mv.freshTemp()
-        if decl.init_expr != NULL:
-            decl.init_expr.accept(self, mv)
-            src = decl.init_expr.getattr("val")
-            decl.setattr("val", mv.visitAssignment(now_symbol.temp, src))
+        if isinstance(now_symbol, VarSymbol):
+            if decl.init_expr != NULL:
+                decl.init_expr.accept(self, mv)
+                src = decl.init_expr.getattr("val")
+                decl.setattr("val", mv.visitAssignment(now_symbol.temp, src))
+        elif isinstance(now_symbol, ArraySymbol):
+            # 数组时要注意
+            tot_len = now_symbol.calc_len()
+            # 获取总共需要的内存大小
+            decl.setattr('val', mv.visitAlloc(tot_len, now_symbol.temp))
+            # 此时没有初始化，或者当前step没有
 
     def visitAssignment(self, expr: Assignment, mv: FuncVisitor) -> None:
         """
@@ -115,16 +123,66 @@ class TACGen(Visitor[FuncVisitor, None]):
         expr.rhs.accept(self, mv)
         dst = expr.lhs.getattr("val")
         src = expr.rhs.getattr("val")
-        # 如果全局变量在这里被修改了，需要额外添加tac码反映到实际的地址
-        expr.setattr("val", mv.visitAssignment(dst, src))
-        if self.ctx.globalscope.containsKey(expr.lhs.value):
-            now_symbol = self.ctx.globalscope.get(expr.lhs.value)
-            if isinstance(now_symbol, VarSymbol):
-                mid_temp = mv.freshTemp()
-                mv.visitGlobalAddressLoad(expr.lhs.value, mid_temp)
-                mv.visitGlobalOffsetStore(dst, mid_temp, 0)
-                # 存进全局变量的地址
 
+        if isinstance(expr.lhs, Identifier):
+            var_name = expr.lhs.value
+        
+        elif isinstance(expr.lhs, IndexExpr):
+            var_name = expr.lhs.base.value
+
+        expr.setattr("val", mv.visitAssignment(dst, src))
+
+        # 对于局部数组，其寄存器是常驻的
+        # 对于全局数组与全局变量，其寄存器是新鲜的
+
+        if self.ctx.globalscope.containsKey(var_name):
+            now_symbol = self.ctx.globalscope.get(var_name)
+            mid_temp = mv.freshTemp()
+            mv.visitGlobalAddressLoad(var_name, mid_temp)
+            if isinstance(expr.lhs, IndexExpr):
+                mv.visitGlobalOffsetStore(dst, mv.visitBinary(tacop.BinaryOp.ADD, mid_temp, expr.lhs.getattr('offset')), 0)
+                # 把数据存进全局变量
+            elif isinstance(expr.lhs, Identifier):
+                mv.visitGlobalOffsetStore(dst, mid_temp, 0)
+        else:
+            if isinstance(expr.lhs, IndexExpr):
+                # 需要存进去
+                now_symbol = expr.lhs.getattr('symbol')
+                start_temp = now_symbol.temp
+                mv.visitGlobalOffsetStore(dst, mv.visitBinary(tacop.BinaryOp.ADD, start_temp, expr.lhs.getattr('offset')), 0)
+            # 局部变量不用存
+
+    def visitIndexExpr(self, expr: IndexExpr, mv: FuncVisitor) -> None:
+        now_symbol = expr.getattr('symbol')
+        
+        # 注意对于全局数组是不存在寄存器的
+        if isinstance(now_symbol, ArraySymbol):
+            # 全局使用的寄存器
+            add_offset = mv.visitLoad(0)
+            tot_temp = mv.visitLoad(now_symbol.calc_len())
+            for (id, child) in enumerate(expr.index.children) :
+                child.accept(self, mv)
+                # 获取当前维数的大小
+                add_offset = mv.visitBinary(tacop.BinaryOp.ADD, add_offset, child.getattr('val'))
+                tot_temp = mv.visitBinary(tacop.BinaryOp.DIV, tot_temp, mv.visitLoad(now_symbol.index[id]))
+                add_offset = mv.visitBinary(tacop.BinaryOp.MUL, add_offset, tot_temp)
+                
+            add_offset = mv.visitBinary(tacop.BinaryOp.MUL, add_offset, mv.visitLoad(4))
+            # 注意乘4个字节
+            # 计算地址偏移量
+            expr.setattr('offset', add_offset)
+            dst = mv.freshTemp()
+            if now_symbol.isGlobal:
+                mid_temp = mv.freshTemp()
+                mv.visitGlobalAddressLoad(expr.base.value, mid_temp)
+                mid_temp = mv.visitBinary(tacop.BinaryOp.ADD, mid_temp, add_offset)
+                expr.setattr('val', mv.visitGlobalOffsetLoad(dst, mid_temp, 0))
+            else:
+                # 存储目标寄存器
+                mid_temp = mv.visitBinary(tacop.BinaryOp.ADD, now_symbol.temp, add_offset)
+                expr.setattr('val', mv.visitGlobalOffsetLoad(dst, mid_temp, 0))  
+                # 独立而特别的偏移量
+    
     def visitIf(self, stmt: If, mv: FuncVisitor) -> None:
         stmt.cond.accept(self, mv)
 

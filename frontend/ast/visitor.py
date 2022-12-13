@@ -75,10 +75,16 @@ class Visitor(Protocol[T, U]):  # type: ignore
     def visitContinue(self, that: Continue, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)
 
+    def visitIndexList(self, that: IndexList, ctx: T) -> Optional[Sequence[U]]:
+        return self.visitOther(that, ctx)
+
     def visitGlobalDeclaration(self, that: GlobalDeclaration, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)
 
     def visitDeclaration(self, that: Declaration, ctx: T) -> Optional[U]:
+        return self.visitOther(that, ctx)
+
+    def visitIndexExpr(self, that: IndexExpr, ctx: T) -> Optional[U]:
         return self.visitOther(that, ctx)
 
     def visitUnary(self, that: Unary, ctx: T) -> Optional[U]:
