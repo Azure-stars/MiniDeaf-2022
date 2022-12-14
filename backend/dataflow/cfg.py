@@ -14,7 +14,7 @@ class CFG:
     def __init__(self, nodes: list[BasicBlock], edges: list[(int, int)]) -> None:
         self.nodes = nodes
         self.edges = edges
-
+        self.avaliable = [False for _ in range(len(nodes))]
         self.links = []
         for i in range(len(nodes)):
             self.links.append((set(), set()))
@@ -22,7 +22,20 @@ class CFG:
             self.links[u][1].add(v)
             self.links[v][0].add(u)
             # print(u, v)
-
+        # 写一个拓扑排序判断可达性
+        q = []
+        q.append(0)
+        head = 0
+        tail = 1
+        self.avaliable[0] = True
+        while(head != tail):
+            now_val = q[head]
+            head += 1
+            for x in self.links[now_val][1]:
+                if self.avaliable[x] == False:
+                    q.append(x)
+                    tail += 1
+                    self.avaliable[x] = True
     def getBlock(self, id):
         return self.nodes[id]
 
@@ -42,6 +55,4 @@ class CFG:
         return iter(self.nodes)
 
     def judge(self, id: int):
-        if id != 0:
-            return self.getInDegree(id) != 0
-        return True
+        return self.avaliable[id]
