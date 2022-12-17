@@ -131,16 +131,18 @@ step10要求支持全局变量，相比于函数部分简单了许多。
 
 4. 对于`la v0,a`
 
-   1. ```she
+   1. 对于非PIC编译参数下的代码，设a代表链接之后的地址数，delta=a-pc
+      
+      ```she
       auipc v0, delta[31:12]+delta[11]
-      addi v0,v0,delta[11:0]
+      addi v0, v0,delta[11:0]
       ```
 
-      上图中`delta=a-pc`
-
-   2. ```shell
-      lui v0, a[31:12]
-      addi v0,a[11:0]
+   2. 对于PIC编译参数下的代码，delta = GOT[a] - pc
+      
+      ```shell
+      auipc v0, delta[31:12]+delta[11]
+      lw v0,v0,delta[11:0]
       ```
-
+      
       
