@@ -105,7 +105,7 @@ step10要求支持全局变量，相比于函数部分简单了许多。
    
    int main() {
        int x = 1;
-       return f(x++, x++);
+       return f(x=x+1, x=x+1);
    }
    ```
 
